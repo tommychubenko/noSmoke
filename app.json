@@ -28,13 +28,13 @@
     "plugins": [
       "expo-router",
       // "@react-native-firebase/app",
-      [
-        "react-native-google-mobile-ads",
-        {
-          "iosAppId": "ca-app-pub-6658861467026382~3148246399",
-          "androidAppId": "ca-app-pub-6658861467026382~6565581373"
-        }
-      ],
+      // [
+      //   "react-native-google-mobile-ads",
+      //   {
+      //     "iosAppId": "ca-app-pub-6658861467026382~3148246399",
+      //     "androidAppId": "ca-app-pub-6658861467026382~6565581373"
+      //   }
+      // ],
 
       [
         "expo-splash-screen",
