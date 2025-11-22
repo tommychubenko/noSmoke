@@ -3,6 +3,7 @@ import React from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../src/hooks/useTheme';
 import { BannerAd, TestIds, BannerAdSize } from 'react-native-google-mobile-ads';
+import { StatusBar } from 'expo-status-bar';
 
 /**
  * Цей файл налаштовує нижню панель навігації (Tabs) для основних екранів додатка.

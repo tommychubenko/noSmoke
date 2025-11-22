@@ -5,8 +5,12 @@ import * as storageService from "@/src/services/storageService";
 import { SetupData } from "@/src/services/storageService";
 import { Stack, router } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Text, View } from "react-native";
 import { ThemeProvider } from "../src/context/ThemeContext";
+import { StatusBar } from "expo-status-bar"; // Компонент для керування статус-баром
+import { useTheme } from "@/src/hooks/useTheme"; // Ваш хук для отримання поточної теми
+
+// ...
 
 // --- ІНТЕРФЕЙСИ ---
 
@@ -30,6 +34,25 @@ interface InitializationState {
  * The Root Layout component handles app initialization, theme context provision,
  * and conditional routing based on whether the initial setup is complete.
  */
+
+
+const ThemeStatusBar = () => {
+    // 👇 useTheme() викликається ТУТ, всередині компонента
+    const { currentTheme, colors } = useTheme(); 
+    
+    const statusBarStyle = currentTheme.isDark ? 'light' : 'dark'; 
+
+    return (
+      <StatusBar 
+        style={statusBarStyle} 
+        // 🚨 КРИТИЧНО для Android: явно встановлюємо фон
+        backgroundColor={colors.backgroundPrimary} 
+        animated={true}
+        translucent={false}
+      />
+    );
+};
+
 const RootLayout = () => {
   const [initialization, setInitialization] = useState<InitializationState>({
     isReady: false,
@@ -38,6 +61,8 @@ const RootLayout = () => {
     savedThemeName: AppColors.Theme3.name as ThemeName,
     savedIsPremium: false, // Ініціалізуємо статус Premium як false
   });
+
+
 
   // 1. Логіка ініціалізації: Завантаження даних налаштування та теми
   useEffect(() => {
@@ -90,6 +115,7 @@ const RootLayout = () => {
           backgroundColor: AppColors.Theme3.backgroundPrimary,
         }}
       >
+     
         <ActivityIndicator
           size="large"
           color={AppColors.Theme3.accentPrimary}
@@ -101,17 +127,19 @@ const RootLayout = () => {
     );
   }
 
+
+
   // 4. Основна структура додатку, обгорнута в ThemeProvider
   return (
     // ThemeProvider має бути ініціалізований зі збереженими налаштуваннями
-    <ThemeProvider 
-        initialThemeName={initialization.savedThemeName}
-        initialIsPremium={initialization.savedIsPremium} // ПЕРЕДАЄМО НОВИЙ ПРОПС
-    >
+    <ThemeProvider
+      initialThemeName={initialization.savedThemeName}
+      initialIsPremium={initialization.savedIsPremium} // ПЕРЕДАЄМО НОВИЙ ПРОПС
+    ><ThemeStatusBar />
       <Stack
         screenOptions={{
           headerShown: false, // Приховуємо заголовок за замовчуванням
-          statusBarTranslucent: false,
+          // statusBarTranslucent: false,
         }}
       >
         {/* Екран 'setup' повинен бути доступний поза групою вкладок */}
@@ -126,7 +154,14 @@ const RootLayout = () => {
         {/* Спеціальні модальні екрани */}
         <Stack.Screen
           name="premium-modal"
-          options={{ presentation: "modal", title: "Отримати Premium" }}
+          options={{
+
+            title: "Отримати Premium",
+
+            // 👇 Ця опція примусово встановлює анімацію "знизу вгору" на всіх платформах
+            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+            animation: 'slide_from_bottom',
+          }}
         />
       </Stack>
     </ThemeProvider>

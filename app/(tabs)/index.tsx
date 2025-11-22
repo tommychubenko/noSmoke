@@ -262,7 +262,7 @@ const HomeScreen = () => {
                             disabled={true}
                             // onPress={() => router.replace(ROUTES.SETTINGS_TAB)}
                             useSecondaryColor={true}
-                            containerStyle={[styles.secondaryButton, {backgroundColor: "transparent"}] }
+                            containerStyle={[styles.secondaryButton, {backgroundColor: "transparent",shadowColor:"transparent"}] }
                             icon={<Foundation name="crown" size={24} color={colors.textPrimary} />}
                             textStyle={{ fontSize: 14 }} 
                         /> :  <ThemedButton 
