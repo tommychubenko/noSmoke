@@ -9,7 +9,7 @@ export interface AppRoutes {
   SETUP: '/setup';
   
   // Tab-based routes (accessible via the bottom navigation bar)
-  TABS_GROUP: '(tabs)'; // ДОДАНО: Шлях до групи вкладок
+  TABS_GROUP: '/(tabs)'; // ДОДАНО: Шлях до групи вкладок
   HOME_TAB: '/';
   STATS_TAB: '../stats';
   SETTINGS_TAB: '../settings';
@@ -24,7 +24,7 @@ export interface AppRoutes {
  */
 export const ROUTES: AppRoutes = {
   SETUP: '/setup',  
-  TABS_GROUP: '(tabs)', // ДОДАНО: Використовується для переходу до головного Tab Navigator
+  TABS_GROUP: '/(tabs)', // ДОДАНО: Використовується для переходу до головного Tab Navigator
   HOME_TAB: '/',
   STATS_TAB: '../stats',
   SETTINGS_TAB: '../settings',

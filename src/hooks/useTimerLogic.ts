@@ -1,350 +1,288 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import * as storageService from '../services/storageService';
-import { SetupData, SmokingLogEntry } from '../services/storageService';
+import { useState, useEffect, useCallback } from "react";
+import * as storageService from "../services/storageService";
+import { SetupData, SmokingLogEntry } from "../services/storageService";
+import { Vibration } from "react-native";
+
+// --- CONSTANTS ---
+const MS_PER_SECOND = 1000;
+const ACTIVE_HOURS_PER_DAY = 16;
+const ACTIVE_SECONDS_PER_DAY = ACTIVE_HOURS_PER_DAY * 3600; // 57600 секунд
+const MAX_INTERVAL = 24 * 3600; // Обмеження: не більше 24 годин
+
+// Цільова кількість днів для кожного плану
+const TARGET_DAYS = {
+    slow: 30, // 30 днів до 0 сигарет
+    balanced: 20, // 20 днів до 0 сигарет
+    aggressive: 10, // 10 днів до 0 сигарет
+};
 
 // --- INTERFACES ---
-
-/**
- * Defines the state of the main timer.
- */
 interface TimerState {
-  /** Remaining time in seconds until the next allowed cigarette. */
-  remainingSeconds: number;
-  /** Total duration of the current interval in seconds (used for progress calculation). */
-  intervalDuration: number;
-  /** The time (timestamp) when the user can next smoke. */
-  nextAllowedSmokeTime: number | null;
-  /** True if the user can currently smoke (remainingSeconds is 0 or less). */
-  isTimeUp: boolean;
-  /** True if the timer is currently paused (e.g., due to inactivity time). */
-  isPaused: boolean;
+    remainingSeconds: number;
+    intervalDuration: number;
+    nextAllowedSmokeTime: number | null;
+    isTimeUp: boolean;
+    isPaused: boolean;
 }
 
-/**
- * Defines the complete state and actions returned by the hook.
- */
 interface UseTimerLogicResult extends TimerState {
-  /** The user's loaded setup data. Null during loading. */
-  setupData: SetupData | null;
-  /** Logs of past smoking events. */
-  smokingLogs: SmokingLogEntry[];
-  /** Loading status. */
-  isLoading: boolean;
-  /** Logs a new cigarette and resets the timer. */
-  recordCigarette: () => Promise<void>;
-  /** Formats the remaining time into HH:MM:SS string. */
-  formatRemainingTime: (seconds: number) => string;
+    setupData: SetupData | null;
+    smokingLogs: SmokingLogEntry[];
+    isLoading: boolean;
+    recordCigarette: () => Promise<void>;
+    formatRemainingTime: (seconds: number) => string;
+    refreshData: () => Promise<void>;
+    targetCigarettesPerDay: number; 
 }
 
-// --- CONSTANTS & HELPERS ---
-
-const MS_PER_SECOND = 1000;
-const SECONDS_PER_MINUTE = 60;
-const MINUTES_PER_HOUR = 60;
-const SECONDS_PER_HOUR = SECONDS_PER_MINUTE * MINUTES_PER_HOUR;
+// --- UTILITY FUNCTIONS ---
 
 /**
- * Converts total seconds into a display string (HH:MM:SS).
+ * Calculates the number of full days passed since the plan start date.
  */
-const formatSeconds = (totalSeconds: number): string => {
-  const seconds = Math.max(0, totalSeconds);
-  const h = Math.floor(seconds / SECONDS_PER_HOUR);
-  const m = Math.floor((seconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE);
-  const s = Math.floor(seconds % SECONDS_PER_MINUTE);
+const getDaysPassed = (startDate: string): number => {
+    const start = new Date(startDate);
+    const today = new Date();
+    start.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
 
-  const pad = (num: number) => String(num).padStart(2, '0');
+    const diffTime = today.getTime() - start.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-  // Show hours only if non-zero or if the remaining time is large
-  if (h > 0) {
-    return `${pad(h)}:${pad(m)}:${pad(s)}`;
-  }
-  return `${pad(m)}:${pad(s)}`;
+    return Math.max(0, diffDays);
 };
 
 /**
- * Calculates the required interval duration based on the plan and daily count.
- * @param data User setup data.
- * @returns Average time in seconds between cigarettes during active hours.
+ * Calculates the CURRENT Target CPD based on linear reduction, 
+ * and then derives the required Interval.
+ * * ЛОГІКА ЗМІНЕНА: Тепер ми зменшуємо кількість, а потім розраховуємо інтервал.
  */
-const calculateIntervalDuration = (data: SetupData): number => {
-  // Convert 'HH:MM' time strings to minutes from midnight
-  const timeToMinutes = (time: string): number => {
-    const [h, m] = time.split(':').map(Number);
-    return h * 60 + m;
-  };
+const calculatePlanMetrics = (setup: SetupData): { intervalDuration: number; targetCigarettesPerDay: number } => {
+    const { cigarettesPerDay, planType, startDate } = setup;
 
-  const startMinutes = timeToMinutes(data.activeStartTime);
-  let endMinutes = timeToMinutes(data.activeEndTime);
-  
-  // Handle case where end time is the next day (e.g., 23:00 to 01:00)
-  if (endMinutes < startMinutes) {
-      endMinutes += 24 * 60;
-  }
-  
-  const activeTimeMinutes = endMinutes - startMinutes;
-  
-  // 1. Calculate base seconds per cigarette
-  // (Active Time in Minutes * 60) / Cigarettes per Day
-  const baseIntervalSeconds = (activeTimeMinutes * 60) / data.cigarettesPerDay;
+    if (cigarettesPerDay <= 0) {
+        return { intervalDuration: MAX_INTERVAL, targetCigarettesPerDay: 0 };
+    }
 
-  // 2. Adjust based on the plan type
-  let adjustmentFactor = 1.0;
-  switch (data.planType) {
-    case 'slow':
-      adjustmentFactor = 1.0; // Minimal change for the "slow" plan (acts as baseline)
-      break;
-    case 'balanced':
-      // The goal is to slightly increase the interval length 
-      // over the course of the plan (e.g., 10% increase per week).
-      // For simplicity in MVP, we just use a fixed slightly longer interval.
-      adjustmentFactor = 1.1; // 10% longer interval than baseline
-      break;
-    case 'aggressive':
-      adjustmentFactor = 1.3; // 30% longer interval than baseline
-      break;
-  }
-  
-  // In a real app, 'adjustmentFactor' would be calculated dynamically based on 
-  // the 'startDate' and the current week/day to provide progressive reduction.
+    // 1. Дні, що минули
+    const daysPassed = getDaysPassed(startDate);
 
-  return Math.round(baseIntervalSeconds * adjustmentFactor);
-};
+    // 2. Цільова тривалість плану в днях
+    const targetDays = TARGET_DAYS[planType] || TARGET_DAYS.balanced;
+    
+    // 3. Коефіцієнт зменшення (на скільки одиниць зменшується CPD щодня)
+    // Якщо 20 шт за 20 днів, то 20/20 = 1 шт/день.
+    // Використовуємо Math.ceil, щоб гарантувати, що на останній день CPD буде 1 (або 0).
+    const reductionPerDay = Math.ceil(cigarettesPerDay / targetDays);
 
-/**
- * Determines if the current time falls within the user's active hours.
- * @param setupData User setup data.
- * @param currentTime Current Date object.
- * @returns True if active, false otherwise.
- */
-const isWithinActiveHours = (setupData: SetupData, currentTime: Date): boolean => {
-    const timeToMinutes = (time: string): number => {
-        const [h, m] = time.split(':').map(Number);
-        return h * 60 + m;
-    };
-
-    const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
-    let startMinutes = timeToMinutes(setupData.activeStartTime);
-    let endMinutes = timeToMinutes(setupData.activeEndTime);
-
-    // Normalize to handle overnight periods (e.g., 22:00 to 06:00)
-    if (endMinutes < startMinutes) {
-        if (currentMinutes >= startMinutes || currentMinutes < endMinutes) {
-            return true; // Active in the evening or early morning
-        }
-    } else {
-        if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
-            return true; // Active during the day
-        }
+    // 4. Розрахунок НОВОГО ЦІЛЬОВОГО CPD (Лінійне зменшення)
+    const reductionAmount = reductionPerDay * daysPassed;
+    
+    // Нова ціль: Початкова кількість - (Крок * Кількість днів)
+    let newTargetCPD = cigarettesPerDay - reductionAmount;
+    
+    // Обмеження цілі: мінімум 1 сигарета (якщо тільки початкова не була 0).
+    if (newTargetCPD <= 0) {
+        newTargetCPD = 1; 
     }
     
-    return false;
-};
-
-/**
- * Calculates the seconds remaining until the start of the next active period.
- * @param setupData User setup data.
- * @param currentTime Current Date object.
- * @returns Seconds until the next active period starts.
- */
-const calculateTimeUntilActive = (setupData: SetupData, currentTime: Date): number => {
-    const timeToMinutes = (time: string): number => {
-        const [h, m] = time.split(':').map(Number);
-        return h * 60 + m;
-    };
-    
-    const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
-    const startMinutes = timeToMinutes(setupData.activeStartTime);
-    const endMinutes = timeToMinutes(setupData.activeEndTime);
-
-    let nextStartTimeMinutes;
-
-    if (endMinutes < startMinutes) {
-        // Overnight active time (e.g., active 22:00-06:00)
-        // If current time is after active end time (06:00), wait until 22:00 today.
-        if (currentMinutes >= endMinutes && currentMinutes < startMinutes) {
-             // We are in the non-active period (e.g., 07:00 to 21:59). Wait until startMinutes.
-             nextStartTimeMinutes = startMinutes;
-        } else {
-            // We are currently in the active period (or just finished). 
-            // The logic here is tricky: if the timer is paused, it should reset 
-            // when the non-active period starts, which is handled in the main loop.
-            // When calculating 'until active', we only care if we are currently inactive 
-            // and need to wait for the next active start.
-            // If the current time is 01:00 (active), this function should not be called 
-            // as isWithinActiveHours would be true.
-            return 0; // Should not happen if called correctly
-        }
-    } else {
-        // Daytime active time (e.g., active 08:00-22:00)
-        // If current time is after active end time, wait until the next day's start time.
-        if (currentMinutes >= endMinutes) {
-            nextStartTimeMinutes = startMinutes + (24 * 60); // Tomorrow's start time
-        } else if (currentMinutes < startMinutes) {
-            // Wait for today's start time
-            nextStartTimeMinutes = startMinutes;
-        } else {
-            return 0; // We are already active
-        }
+    // Обмеження: TargetCPD не може бути менше 1, поки дні не вичерпалися.
+    // Якщо ми досягли останнього дня плану, ціль може бути 0.
+    if (daysPassed >= targetDays) {
+        newTargetCPD = 0; // План завершено, ціль = 0
     }
     
-    const minutesToNextStart = nextStartTimeMinutes - currentMinutes;
-    return minutesToNextStart * 60;
+    const finalTargetCPD = Math.max(0, newTargetCPD);
+
+    // 5. РОЗРАХУНОК НОВОГО ІНТЕРВАЛУ (Похідний)
+    // Інтервал = Активний час / Нова цільова кількість
+    let derivedInterval;
+    
+    if (finalTargetCPD === 0) {
+        // Якщо ціль 0, інтервал - це максимальний час
+        derivedInterval = MAX_INTERVAL;
+    } else {
+        derivedInterval = ACTIVE_SECONDS_PER_DAY / finalTargetCPD;
+    }
+
+    // 6. Обмеження інтервалу та округлення
+    const finalInterval = Math.floor(Math.min(derivedInterval, MAX_INTERVAL));
+
+    return { 
+        intervalDuration: finalInterval, 
+        targetCigarettesPerDay: finalTargetCPD
+    };
 };
 
-
-// --- CUSTOM HOOK IMPLEMENTATION ---
+// --- HOOK IMPLEMENTATION ---
 
 export const useTimerLogic = (): UseTimerLogicResult => {
-  // State for data
-  const [setupData, setSetupData] = useState<SetupData | null>(null);
-  const [smokingLogs, setSmokingLogs] = useState<SmokingLogEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+    // --- 1. State ---
 
-  // State for timer logic
-  const [nextAllowedSmokeTime, setNextAllowedSmokeTime] = useState<number | null>(null);
-  const [remainingSeconds, setRemainingSeconds] = useState(0);
+    const [setupData, setSetupData] = useState<SetupData | null>(null);
+    const [smokingLogs, setSmokingLogs] = useState<SmokingLogEntry[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-  // --- 1. Data Initialization ---
-  
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    const [setup, logs] = await Promise.all([
-      storageService.getSetupData(),
-      storageService.getSmokingLogs(),
-    ]);
-    
-    setSetupData(setup);
-    setSmokingLogs(logs);
-    setIsLoading(false);
-    return { setup, logs };
-  }, []);
+    const [intervalDuration, setIntervalDuration] = useState(0);
+    const [targetCigarettesPerDay, setTargetCigarettesPerDay] = useState(0);
+    const [nextAllowedSmokeTime, setNextAllowedSmokeTime] = useState<
+        number | null
+    >(null);
+    const [remainingSeconds, setRemainingSeconds] = useState(0);
+    const [isPaused, setIsPaused] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+    // --- 2. Helper Logic ---
 
-  // --- 2. Core Calculation: Interval and Next Allowed Time ---
+    const determineNextAllowedTime = useCallback(
+        (setup: SetupData, logs: SmokingLogEntry[], duration: number) => {
+            const now = Date.now();
+            setIsPaused(false);
 
-  // Calculate the required interval duration only when setupData changes
-  const intervalDuration = useMemo(() => {
-    if (!setupData) return 0;
-    return calculateIntervalDuration(setupData);
-  }, [setupData]);
+            if (logs.length === 0) {
+                setNextAllowedSmokeTime(now);
+                setRemainingSeconds(0);
+            } else {
+                const lastLog = logs[logs.length - 1];
+                const nextTime = lastLog.timestamp + duration * MS_PER_SECOND;
+                setNextAllowedSmokeTime(nextTime);
 
-  // Function to determine the starting point for the timer
-  const determineNextAllowedTime = useCallback((
-    currentSetupData: SetupData, 
-    currentLogs: SmokingLogEntry[], 
-    duration: number
-  ) => {
-    const now = Date.now();
-    const lastSmokeTime = currentLogs.length > 0 
-      ? currentLogs[currentLogs.length - 1].timestamp 
-      : Date.parse(currentSetupData.startDate); // Use start date if no logs
+                const difference = nextTime - now;
+                const secondsRemaining = Math.max(
+                    0,
+                    Math.ceil(difference / MS_PER_SECOND)
+                );
+                setRemainingSeconds(secondsRemaining);
+            }
+        },
+        []
+    );
 
-    // Next allowed time is Last Smoke Time + Interval Duration
-    const calculatedNextTime = lastSmokeTime + (duration * MS_PER_SECOND);
-    
-    // Set the state
-    setNextAllowedSmokeTime(calculatedNextTime);
-    
-    return calculatedNextTime;
-  }, []);
+    // --- 3. Core Function: Load/Refresh Data ---
 
+    const loadInitialData = useCallback(async () => {
+        setIsLoading(true);
 
-  // --- 3. Effect to Initialize Timer State ---
-  useEffect(() => {
-    if (setupData && intervalDuration > 0 && !isLoading) {
-        determineNextAllowedTime(setupData, smokingLogs, intervalDuration);
-    }
-  }, [setupData, smokingLogs, intervalDuration, isLoading, determineNextAllowedTime]);
+        const logs = await storageService.getSmokingLogs();
+        setSmokingLogs(logs);
 
+        const setup = await storageService.getSetupData();
+        if (setup) {
+            setSetupData(setup);
 
-  // --- 4. Main Timer Loop (Interval) ---
+            // Розрахунок обох метрик
+            const { intervalDuration: duration, targetCigarettesPerDay: targetCPD } = calculatePlanMetrics(setup); 
+            setIntervalDuration(duration);
+            setTargetCigarettesPerDay(targetCPD); 
 
-  const [isPaused, setIsPaused] = useState(false);
+            determineNextAllowedTime(setup, logs, duration);
+        } else {
+            setSetupData(null);
+            setIntervalDuration(0);
+            setTargetCigarettesPerDay(0);
+            setNextAllowedSmokeTime(null);
+            setRemainingSeconds(0);
+        }
 
-  useEffect(() => {
-    if (!setupData || intervalDuration <= 0 || nextAllowedSmokeTime === null) {
-      // Nothing to run yet
-      setRemainingSeconds(0);
-      return;
-    }
+        setIsLoading(false);
+    }, [determineNextAllowedTime]);
 
-    // Set up the interval for countdown
-    const timerInterval = setInterval(() => {
-      const now = Date.now();
-      const nowInSeconds = Math.floor(now / MS_PER_SECOND);
-      const nextTimeInSeconds = Math.floor(nextAllowedSmokeTime! / MS_PER_SECOND);
-      
-      const isCurrentlyActive = isWithinActiveHours(setupData, new Date(now));
+    // --- 4. Effects ---
 
-      if (!isCurrentlyActive) {
-          // A. PAUSE LOGIC: If outside active hours, pause the timer
-          const secondsUntilActive = calculateTimeUntilActive(setupData, new Date(now));
-          setRemainingSeconds(secondsUntilActive); 
-          setIsPaused(true);
-          return;
-      }
-      
-      // B. RUN LOGIC: If inside active hours
-      setIsPaused(false);
-      
-      const secondsRemaining = nextTimeInSeconds - nowInSeconds;
+    useEffect(() => {
+        loadInitialData();
+    }, [loadInitialData]);
 
-      if (secondsRemaining <= 0) {
-        setRemainingSeconds(0);
-        clearInterval(timerInterval); // Stop the countdown when time is up
-        return;
-      }
+    useEffect(() => {
+        if (
+            isLoading ||
+            !setupData ||
+            intervalDuration <= 0 ||
+            nextAllowedSmokeTime === null ||
+            remainingSeconds <= 0
+        ) {
+            setRemainingSeconds(0);
+            return;
+        }
 
-      setRemainingSeconds(secondsRemaining);
-      
-    }, MS_PER_SECOND); // Update every second
+        const timerInterval = setInterval(() => {
+            const now = Date.now();
+            const difference = nextAllowedSmokeTime - now;
+            const secondsRemaining = Math.max(
+                0,
+                Math.ceil(difference / MS_PER_SECOND)
+            );
 
-    // Cleanup function
-    return () => clearInterval(timerInterval);
-    
-  }, [setupData, intervalDuration, nextAllowedSmokeTime]);
+            if (secondsRemaining === 0) {
+                setRemainingSeconds(0);
+                clearInterval(timerInterval);
+                return;
+            }
 
+            setRemainingSeconds(secondsRemaining);
+        }, MS_PER_SECOND);
 
-  // --- 5. Action: Record Cigarette ---
+        return () => clearInterval(timerInterval);
+    }, [setupData, intervalDuration, nextAllowedSmokeTime, isLoading]);
 
-  const recordCigarette = useCallback(async () => {
-    if (!setupData || intervalDuration <= 0) {
-      console.warn("Attempted to record cigarette before setup or while loading.");
-      return;
-    }
+    // --- 5. Action: Record Cigarette ---
 
-    // 1. Log the event
-    const newLogEntry: SmokingLogEntry = { timestamp: Date.now() };
-    await storageService.addSmokingLog(newLogEntry);
-    
-    // 2. Update local state logs (important for immediate reactivity)
-    const newLogs = [...smokingLogs, newLogEntry];
-    setSmokingLogs(newLogs);
-    
-    // 3. Reset the timer based on the new log
-    determineNextAllowedTime(setupData, newLogs, intervalDuration);
-    
-  }, [setupData, intervalDuration, smokingLogs, determineNextAllowedTime]);
+    const recordCigarette = useCallback(async () => {
+        if (!setupData || intervalDuration <= 0) {
+            console.warn(
+                "Attempted to record cigarette before setup or while loading."
+            );
+            return;
+        }
 
-  // --- 6. Final Result ---
+        // Re-calculate metrics (in case the day changed)
+        const { intervalDuration: currentDuration, targetCigarettesPerDay: targetCPD } = calculatePlanMetrics(setupData);
+        setIntervalDuration(currentDuration);
+        setTargetCigarettesPerDay(targetCPD);
 
-  const timerState: TimerState = {
-    remainingSeconds,
-    intervalDuration,
-    nextAllowedSmokeTime,
-    isTimeUp: remainingSeconds <= 0 && !isPaused,
-    isPaused,
-  };
+        // Log the event in storage
+        const newLogEntry: SmokingLogEntry = { timestamp: Date.now() };
+        await storageService.addSmokingLog(newLogEntry);
 
-  return {
-    ...timerState,
-    setupData,
-    smokingLogs,
-    isLoading,
-    recordCigarette,
-    formatRemainingTime: formatSeconds,
-  };
+        // Update local state logs
+        const newLogs = [...smokingLogs, newLogEntry];
+        setSmokingLogs(newLogs);
+
+        // Reset the timer based on the new log and the re-calculated duration
+        determineNextAllowedTime(setupData, newLogs, currentDuration);
+        Vibration.vibrate(5)
+    }, [setupData, smokingLogs, determineNextAllowedTime]);
+
+    // --- 6. Final Result ---
+
+    const timerState: TimerState = {
+        remainingSeconds,
+        intervalDuration,
+        nextAllowedSmokeTime,
+        isTimeUp: remainingSeconds <= 0 && !isPaused,
+        isPaused,
+    };
+
+    const formatRemainingTime = (seconds: number): string => {
+        const absSeconds = Math.abs(seconds);
+        const h = Math.floor(absSeconds / 3600);
+        const m = Math.floor((absSeconds % 3600) / 60);
+        const s = absSeconds % 60;
+
+        const parts = [h, m, s].map((v) => (v < 10 ? "0" + v : v));
+
+        return parts.join(":");
+    };
+
+    const result: UseTimerLogicResult = {
+        ...timerState,
+        setupData,
+        smokingLogs,
+        isLoading,
+        recordCigarette,
+        formatRemainingTime,
+        refreshData: loadInitialData,
+        targetCigarettesPerDay,
+    };
+
+    return result;
 };

@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../src/hooks/useTheme';
+import { BannerAd, TestIds, BannerAdSize } from 'react-native-google-mobile-ads';
 
 /**
  * Цей файл налаштовує нижню панель навігації (Tabs) для основних екранів додатка.
@@ -15,7 +16,10 @@ import { useTheme } from '../../src/hooks/useTheme';
 const TabsLayout = () => {
   const { colors } = useTheme();
 
+  
+
   return (
+    <>
     <Tabs
       screenOptions={{
         headerShown: false, // Приховуємо заголовок на всіх екранах вкладок
@@ -71,14 +75,21 @@ const TabsLayout = () => {
         Потрібно приховати екран налаштувань (setup), оскільки він є 
         частиною кореневої навігації, але не має відображатися у вкладках.
       */}
-      <Tabs.Screen 
+      {/* <Tabs.Screen 
         name="setup" 
         options={{ 
           href: null, // Приховати з нижньої панелі 
           title: 'Налаштування' // Для коректності, якщо його викликано окремо
         }} 
-      />
+      /> */}
     </Tabs>
+    {/* <BannerAd unitId={TestIds.BANNER}
+    size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+    requestOptions={{requestNonPersonalizedAdsOnly: true, networkExtras: {collapsible: "bottom"}}}
+    />  */}
+
+    </>
+    
   );
 };
 

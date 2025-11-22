@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import React from 'react';
 import {  ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ThemedButton from '../src/components/ThemedButton';
@@ -57,7 +57,7 @@ const PremiumModalScreen = () => {
             {/* Close Button */}
             <TouchableOpacity 
                 style={[styles.closeButton, { backgroundColor: colors.backgroundSecondary }]}
-                onPress={() => router.replace(ROUTES.HOME_TAB)}
+                onPress={() =>router.back()}
             >
                 <MaterialCommunityIcons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>

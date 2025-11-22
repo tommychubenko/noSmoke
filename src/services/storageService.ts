@@ -1,24 +1,27 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // --- INTERFACES ---
 
 import { DEFAULT_THEME, ThemeName } from "../constants/Colors";
 
 /**
- * Defines the structure for user setup data. This data determines 
+ * Defines the structure for user setup data. This data determines
  * if the user has completed the initial setup screen.
  */
 export interface SetupData {
   // Time user starts being active (e.g., '07:00')
-  activeStartTime: string; 
+  activeStartTime: string;
   // Time user finishes being active (e.g., '23:00')
   activeEndTime: string;
   // Average cigarettes per day
-  cigarettesPerDay: number; 
+  cigarettesPerDay: number;
   // Chosen quit strategy (e.g., 'balanced')
-  planType: 'slow' | 'balanced' | 'aggressive';
+  planType: "slow" | "balanced" | "aggressive";
   // Date when the user started the plan (for calculating future intervals)
-  startDate: string; 
+  startDate: string;
+
+  packPrice: number;
+  cigarettesPerPack: number;
 }
 
 /**
@@ -40,16 +43,15 @@ export interface AppSettings {
 
 // Keys used in local storage (e.g., AsyncStorage)
 const STORAGE_KEYS = {
-  SETUP_DATA: 'user_setup_data',
-  APP_SETTINGS: 'app_settings',
-  LOGS: 'smoking_logs',
+  SETUP_DATA: "user_setup_data",
+  APP_SETTINGS: "app_settings",
+  LOGS: "smoking_logs",
 };
 
 /**
  * Array of all storage keys to be cleared during a data reset. (ДОДАНО)
  */
 const ALL_STORAGE_KEYS = Object.values(STORAGE_KEYS);
-
 
 // --- HELPER FUNCTIONS ---
 
@@ -76,15 +78,14 @@ const setItem = async (key: string, value: string) => {
  * FIX: Uses multiRemove for targeted and more reliable key deletion. (ОНОВЛЕНО)
  */
 export const clearAllData = async (): Promise<void> => {
-    try {
-        await AsyncStorage.multiRemove(ALL_STORAGE_KEYS); // ВИКОРИСТОВУЄМО multiRemove
-        console.log("Успішно очищено всі призначені для користувача дані.");
-    } catch (e) {
-        // Логуємо помилку, але дозволяємо процесу тривати, оскільки ключові дані видалено.
-        console.error("Error clearing all data:", e); 
-    }
-}
-
+  try {
+    await AsyncStorage.multiRemove(ALL_STORAGE_KEYS); // ВИКОРИСТОВУЄМО multiRemove
+    console.log("Успішно очищено всі призначені для користувача дані.");
+  } catch (e) {
+    // Логуємо помилку, але дозволяємо процесу тривати, оскільки ключові дані видалено.
+    console.error("Error clearing all data:", e);
+  }
+};
 
 // --- SETUP DATA FUNCTIONS ---
 

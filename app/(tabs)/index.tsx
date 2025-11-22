@@ -1,12 +1,17 @@
 import { router } from 'expo-router';
 import React, { useMemo } from 'react';
 import { ActivityIndicator, Dimensions, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+// ВАЖЛИВО: Потрібно встановити 'react-native-svg': npx expo install react-native-svg
+import Svg, { Circle } from 'react-native-svg'; 
 import ThemedButton from '../../src/components/ThemedButton'; // FIX: Added 'src/' to the path
 import { useTheme } from '../../src/hooks/useTheme';
 import { useTimerLogic } from '../../src/hooks/useTimerLogic';
 import { ROUTES } from '@/src/constants/Routes';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Foundation } from '@expo/vector-icons';
+import mobileAds from "react-native-google-mobile-ads"
+import { RewardedAd,TestIds } from 'react-native-google-mobile-ads';
+
 
 // NOTE: Components like ThemedButton are assumed to be defined elsewhere in the project
 // For a single-file environment, we must mock/define necessary components.
@@ -21,8 +26,82 @@ const PlaceholderButton = (props: any) => {
     );
 }
 
+
+
+
+// --- SVG PROGRESS BAR COMPONENT (НОВИЙ КОМПОНЕНТ) ---
+
+interface CircularProgressBarProps {
+    progress: number; // 0.0 to 1.0 (заповнення)
+    size: number;
+    strokeWidth: number;
+    progressColor: string;
+    backgroundColor: string;
+    children: React.ReactNode;
+}
+
+const CircularProgressBar: React.FC<CircularProgressBarProps> = ({ 
+    progress, 
+    size, 
+    strokeWidth, 
+    progressColor, 
+    backgroundColor, 
+    children 
+}) => {
+    // 1. Обчислюємо розміри
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    
+    // 2. Обчислюємо зміщення для відображення прогресу (0% -> повне зміщення, 100% -> 0 зміщення)
+    const strokeDashoffset = circumference - (progress * circumference);
+
+    return (
+        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+            <Svg height={size} width={size} style={{ transform: [{ rotateZ: '-90deg' }] }}>
+                {/* Background Ring (Статичне кільце) */}
+                <Circle
+                    stroke={backgroundColor}
+                    fill="transparent"
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    strokeWidth={strokeWidth}
+                />
+                {/* Progress Ring (Кільце прогресу) */}
+                <Circle
+                    stroke={progressColor}
+                    fill="transparent"
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round" // Робить кінці лінії закругленими
+                />
+            </Svg>
+            {/* Content (Текст/таймер) позиціонується абсолютно в центрі */}
+            <View style={{ 
+                position: 'absolute', 
+                width: size, 
+                height: size, 
+                justifyContent: 'center', 
+                alignItems: 'center' 
+            }}>
+                {children}
+            </View>
+        </View>
+    );
+};
+
+// mobileAds().initialize().then((adapterStatuses) => {console.log(adapterStatuses)})
+// const adUnitId = __DEV__ ? TestIds.REWARDED : "xxx-xxx-xxx-xxx/yyyy-yyy-yyyy-yyyy"
+// const rewarded = RewardedAd.createForAdRequest(adUnitId, {keywords: ["fashion", 'clothing']})
+
+
+
 const HomeScreen = () => {
-       const { colors, isUserPremium } = useTheme(); 
+    const { colors, isUserPremium } = useTheme(); 
     // Use the custom hook to access all timer state and actions
     const { 
         setupData, 
@@ -45,6 +124,7 @@ const HomeScreen = () => {
         if (intervalDuration <= 0) return 0;
         // Progress is the time spent since the last smoke / total interval duration
         const timeSpent = intervalDuration - remainingSeconds;
+        // Ми обмежуємо прогрес 1.0, щоб не було переповнення (хоча remainingSeconds повинен бути >= 0)
         return Math.min(1, timeSpent / intervalDuration);
     }, [remainingSeconds, intervalDuration]);
 
@@ -82,7 +162,7 @@ const HomeScreen = () => {
 
     // 2. Setup Not Complete State
     if (!setupData) {
-         return (
+        return (
             <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundPrimary }]}>
                 <View style={styles.contentContainer}>
                     <Text style={[styles.timerValue, { color: colors.textPrimary, fontSize: 40 }]}>Welcome!</Text>
@@ -107,7 +187,7 @@ const HomeScreen = () => {
 
     // 3. Main Timer View
     const targetTimeText = formatRemainingTime(intervalDuration);
-    const [mainTime, subTime] = formattedTime.split(':');
+    // const [mainTime, subTime] = formattedTime.split(':'); // Не використовується, можна прибрати якщо не потрібно
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundPrimary }]}>
@@ -121,35 +201,32 @@ const HomeScreen = () => {
                         {statusMessage}
                     </Text>
                     
-                    {/* Timer Circle */}
-                    {/* NOTE: In a real app, this would be a complex SVG or RN-reanimated component. 
-                       Here, it's mocked with a border color change based on progress. */}
-                    <View 
-                        style={[
-                            styles.timerCircle, 
-                            { 
-                                borderColor: colors.separator,
-                                borderWidth: 8,
-                                // Mock progress by changing the background color gradually
-                                backgroundColor: `rgba(${parseInt(colors.accentSecondary.slice(1, 3), 16)}, ${parseInt(colors.accentSecondary.slice(3, 5), 16)}, ${parseInt(colors.accentSecondary.slice(5, 7), 16)}, ${progressPercent * 0.3})`
-                            }
-                        ]}
-                    >
-                        {isTimeUp ? (
-                            <Text style={[styles.timerValue, { color: colors.accentPrimary, fontSize: 50 }]}>
-                                GO!
-                            </Text>
-                        ) : (
-                            <View>
-                                {/* Main time display (MM:SS) */}
-                                <Text style={[styles.timerValue, { color: colors.textPrimary }]}>
-                                    {formattedTime}
+                    {/* Timer Circle - NEW SVG IMPLEMENTATION */}
+                    {/* Використовуємо View для контролю зовнішніх відступів */}
+                    <View style={{ marginVertical: 40 }}> 
+                        <CircularProgressBar
+                            progress={progressPercent} 
+                            size={250} 
+                            strokeWidth={15} // Збільшена товщина лінії
+                            progressColor={isTimeUp ? colors.accentSecondary : colors.accentPrimary} 
+                            backgroundColor={colors.separator} 
+                        >
+                            {isTimeUp ? (
+                                <Text style={[styles.timerValue, { color: colors.accentPrimary, fontSize: 50 }]}>
+                                    GO!
                                 </Text>
-                            </View>
-                        )}
-                        <Text style={[styles.unitText, { color: colors.textSecondary }]}>
-                            {isTimeUp ? 'READY TO RECORD' : 'Remaining until next'}
-                        </Text>
+                            ) : (
+                                <View>
+                                    {/* Main time display (MM:SS) */}
+                                    <Text style={[styles.timerValue, { color: colors.textPrimary }]}>
+                                        {formattedTime}
+                                    </Text>
+                                </View>
+                            )}
+                            <Text style={[styles.unitText, { color: colors.textSecondary }]}>
+                                {isTimeUp ? 'READY TO RECORD' : 'Remaining until next'}
+                            </Text>
+                        </CircularProgressBar>
                     </View>
                     
                     {/* Info Text */}
@@ -180,7 +257,7 @@ const HomeScreen = () => {
                             containerStyle={styles.secondaryButton}
                             textStyle={{ fontSize: 14 }}
                         />
-                       {isUserPremium ?  <ThemedButton 
+                        {isUserPremium ?  <ThemedButton 
                             title="Premium activated"
                             disabled={true}
                             // onPress={() => router.replace(ROUTES.SETTINGS_TAB)}
@@ -189,8 +266,8 @@ const HomeScreen = () => {
                             icon={<Foundation name="crown" size={24} color={colors.textPrimary} />}
                             textStyle={{ fontSize: 14 }} 
                         /> :  <ThemedButton 
-                            title="Edit Plan"
-                            onPress={() => router.replace(ROUTES.PREMIUM_MODAL)}
+                            title="Get Premium"
+                            onPress={() => router.push(ROUTES.PREMIUM_MODAL)}
                             useSecondaryColor={true}
                             containerStyle={styles.secondaryButton}
                             textStyle={{ fontSize: 14 }}
@@ -202,6 +279,8 @@ const HomeScreen = () => {
         </SafeAreaView>
     );
 };
+
+
 
 // --- STYLES ---
 
@@ -221,19 +300,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 20,
     },
-    // Timer Circle Mock
-    timerCircle: {
-        width: 250,
-        height: 250,
-        borderRadius: 125,
-        borderWidth: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 40,
-        marginTop: 20,
-    },
+    // timerCircle - СТАРИЙ СТИЛЬ ВИДАЛЕНО, його функціональність перенесена у CircularProgressBar
     timerValue: {
-        fontSize: 56,
+        fontSize: 45, // Повернуто до більшого розміру
         fontWeight: '800',
     },
     unitText: {

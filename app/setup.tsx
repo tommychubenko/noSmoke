@@ -4,9 +4,14 @@ import { Alert, Dimensions, Platform, ScrollView, StyleSheet, Text, View } from 
 import ThemedButton from '../src/components/ThemedButton';
 import { ROUTES } from '../src/constants/Routes';
 import { useTheme } from '../src/hooks/useTheme';
-import { SetupData, saveSetupData } from '../src/services/storageService';
+import { SetupData, saveSetupData } from '../src/services/storageService'; 
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Temporary components for the form elements (will be inline for single-file mandate)
+// Використовуємо просту TouchableOpacity для сумісності з React Native
+import { TouchableOpacity as RNTouchableOpacity } from 'react-native';
+const TouchableOpacity = RNTouchableOpacity; // Забезпечуємо використання базового компонента
+
+// --- ДОПОМІЖНІ КОМПОНЕНТИ ---
 
 // Helper component for styled text input/selection (simplified for MVP)
 const SetupItem: React.FC<{ 
@@ -30,164 +35,184 @@ const SetupItem: React.FC<{
   );
 };
 
-// Simplified TouchableOpacity for time/number selection
-const TouchableOpacity = (props: any) => <View {...props} />; // Mocking TouchableOpacity for brevity
 
-// --- SETUP SCREEN COMPONENT ---
+// --- ОСНОВНИЙ КОМПОНЕНТ ЕКРАНА ---
 
-/**
- * The initial setup screen where the user inputs their baseline smoking habits 
- * and selects a quit plan.
- */
 const SetupScreen = () => {
   const { colors } = useTheme();
 
-  // 1. State for SetupData
-  const [formData, setFormData] = useState<Omit<SetupData, 'startDate'>>({
-    activeStartTime: '08:00',
-    activeEndTime: '22:00',
-    cigarettesPerDay: 15,
-    planType: 'balanced', // Default plan
-  });
-  const [loading, setLoading] = useState(false);
-
-  // 2. Handlers
+  // --- 1. СТАН ДАНИХ ДЛЯ ФОРМИ ---
+  const [activeStartTime, setActiveStartTime] = useState('08:00');
+  const [activeEndTime, setActiveEndTime] = useState('23:00');
+  const [cigarettesPerDay, setCigarettesPerDay] = useState(20);
+  const [planType, setPlanType] = useState<'slow' | 'balanced' | 'aggressive'>('balanced');
   
-  const handleInputChange = (key: keyof typeof formData, value: any) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
+  // ✅ ДОДАНО СТАНОВІ ЗМІННІ ДЛЯ ФІНАНСІВ:
+  const [packPrice, setPackPrice] = useState(100); // Початкова ціна пачки
+  const [cigarettesPerPack, setCigarettesPerPack] = useState(20); // Початкова кількість сигарет
+  
+  const [isSaving, setIsSaving] = useState(false);
+
+  // --- 2. HANDLERS ---
+  
+  /**
+   * Helper function to navigate to the app's main screen (tabs).
+   */
+  const goToApp = () => {
+    router.replace(ROUTES.TABS_GROUP); 
   };
   
-  // NOTE: In a full React Native app, we would use a Picker or DatePickerModal here.
-  const handleTimeSelect = (key: 'activeStartTime' | 'activeEndTime') => {
-    // Mock time selection for the canvas environment
-    const newTime = key === 'activeStartTime' ? '09:00' : '20:00';
-    handleInputChange(key, newTime);
+  /**
+   * Handles the selection of the reduction plan type.
+   */
+  const handlePlanSelect = (type: 'slow' | 'balanced' | 'aggressive') => {
+    setPlanType(type);
+  };
+  
+  /**
+   * Saves the setup data and navigates to the main app screen.
+   */
+  const handleSaveAndGoToApp = async () => {
+    if (isSaving) return;
     
-    // In a real app:
-    // showDatePicker({
-    //     mode: 'time',
-    //     value: new Date(),
-    //     onChange: (date) => handleInputChange(key, formatTime(date))
-    // });
-  };
-  
-  // 3. Form Submission
-  const handleSubmit = async () => {
-    if (loading) return;
-
-    // Simple validation
-    if (formData.cigarettesPerDay < 1) {
-        Alert.alert("Error", "Please enter a valid number of cigarettes per day.");
+    // ✅ Додано перевірку нових полів
+    if (cigarettesPerDay <= 0 || packPrice <= 0 || cigarettesPerPack <= 0) {
+        Alert.alert(
+            "Помилка вводу", 
+            "Будь ласка, переконайтеся, що всі числові значення (сигарети, ціна пачки, сигарети в пачці) більші за нуль."
+        );
         return;
     }
 
-    setLoading(true);
-
+    setIsSaving(true);
+    
+    const setupData: SetupData = {
+      activeStartTime,
+      activeEndTime,
+      cigarettesPerDay,
+      planType,
+      startDate: new Date().toISOString(),
+      // ✅ ЗБЕРІГАЄМО НОВІ ФІНАНСОВІ ДАНІ
+      packPrice, 
+      cigarettesPerPack,
+    };
+    
     try {
-      const finalData: SetupData = {
-        ...formData,
-        // The start date is the moment the user confirms the setup
-        startDate: new Date().toISOString(), 
-      };
-
-      await saveSetupData(finalData);
-      
-      // Successfully saved, navigate to the main app (Home tab).
-      router.replace(ROUTES.HOME_TAB);
+        await saveSetupData(setupData);
+        goToApp();
     } catch (error) {
-      console.error("Setup save error:", error);
-      Alert.alert("Error", "Could not save settings. Please try again.");
-      setLoading(false);
+        Alert.alert("Помилка", "Не вдалося зберегти налаштування. Спробуйте ще раз.");
+        console.error("Setup save error:", error);
+    } finally {
+        setIsSaving(false);
     }
   };
 
+  // --- 3. RENDER LOGIC ---
 
-  // 4. Render Setup Screen
   return (
-    <View style={[styles.container, { backgroundColor: colors.backgroundPrimary }]}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundPrimary }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         
-        <Text style={[styles.header, { color: colors.textPrimary }]}>
-          Welcome to QuitPal
-        </Text>
+        {/* HEADER */}
+        <Text style={[styles.header, { color: colors.textPrimary }]}>Ваш план кидання</Text>
         <Text style={[styles.subHeader, { color: colors.textSecondary }]}>
-          Tell us a little about your current habits to start your plan.
+          Введіть свої поточні звички, щоб ми могли створити ефективний індивідуальний план зменшення.
         </Text>
-
-        {/* --- SECTION 1: CIGARETTE COUNT --- */}
-        <SetupItem label="Cigarettes per Day" value={formData.cigarettesPerDay}>
-          <Text style={[styles.valueText, { color: colors.textPrimary }]}>
-            {formData.cigarettesPerDay}
-          </Text>
-          {/* Mock increment/decrement buttons for cigarettesPerDay */}
+        
+        {/* СЕКЦІЯ: МОЇ ЗВИЧКИ */}
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>🚬 Мої Звички</Text>
+        
+        {/* КІЛЬКІСТЬ СИГАРЕТ НА ДЕНЬ */}
+        <SetupItem label="Сигарет на день (у середньому)" value={cigarettesPerDay} onPress={() => { /* Модалка для вводу числа */ }}>
+          <Text style={[styles.valueText, { color: colors.textPrimary }]}>{cigarettesPerDay}</Text>
           <View style={styles.stepperContainer}>
-              <ThemedButton 
-                title="−" 
-                containerStyle={styles.stepperButton}
-                onPress={() => handleInputChange('cigarettesPerDay', Math.max(1, formData.cigarettesPerDay - 1))}
-              />
-              <ThemedButton 
-                title="+" 
-                containerStyle={styles.stepperButton}
-                onPress={() => handleInputChange('cigarettesPerDay', formData.cigarettesPerDay + 1)}
-              />
+              <ThemedButton title="-" onPress={() => setCigarettesPerDay(Math.max(5, cigarettesPerDay - 1))} containerStyle={styles.stepperButton} useSecondaryColor={true} />
+              <ThemedButton title="+" onPress={() => setCigarettesPerDay(cigarettesPerDay + 1)} containerStyle={styles.stepperButton} useSecondaryColor={true} />
+          </View>
+        </SetupItem>
+        
+        {/* АКТИВНИЙ ЧАС (ПОЧАТОК) */}
+        <SetupItem label="Активний час (Початок)" value={activeStartTime} onPress={() => { /* Модалка для вибору часу */ }}>
+          <Text style={[styles.valueText, { color: colors.textPrimary }]}>{activeStartTime}</Text>
+        </SetupItem>
+        
+        {/* АКТИВНИЙ ЧАС (КІНЕЦЬ) */}
+        <SetupItem label="Активний час (Кінець)" value={activeEndTime} onPress={() => { /* Модалка для вибору часу */ }}>
+          <Text style={[styles.valueText, { color: colors.textPrimary }]}>{activeEndTime}</Text>
+        </SetupItem>
+        
+        {/* ✅ НОВА СЕКЦІЯ: ФІНАНСИ */}
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>💰 Фінанси</Text>
+
+        {/* ВВІД ЦІНИ ПАЧКИ */}
+        <SetupItem label="Ціна пачки (грн)" value={packPrice} onPress={() => { /* Модалка для вводу числа */ }}>
+          <Text style={[styles.valueText, { color: colors.textPrimary }]}>{packPrice}</Text>
+          <View style={styles.stepperContainer}>
+              <ThemedButton title="-" onPress={() => setPackPrice(Math.max(10, packPrice - 5))} containerStyle={styles.stepperButton} useSecondaryColor={true} />
+              <ThemedButton title="+" onPress={() => setPackPrice(packPrice + 5)} containerStyle={styles.stepperButton} useSecondaryColor={true} />
           </View>
         </SetupItem>
 
-        {/* --- SECTION 2: ACTIVE TIME --- */}
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Active Hours</Text>
-        <SetupItem label="I wake up around" value={formData.activeStartTime} onPress={() => handleTimeSelect('activeStartTime')}>
-          <Text style={[styles.valueText, { color: colors.textPrimary }]}>{formData.activeStartTime}</Text>
+        {/* КІЛЬКІСТЬ СИГАРЕТ У ПАЧЦІ */}
+        <SetupItem label="Сигарет у пачці" value={cigarettesPerPack} onPress={() => { /* Модалка для вводу числа */ }}>
+          <Text style={[styles.valueText, { color: colors.textPrimary }]}>{cigarettesPerPack}</Text>
+          <View style={styles.stepperContainer}>
+              <ThemedButton title="-" onPress={() => setCigarettesPerPack(Math.max(10, cigarettesPerPack - 1))} containerStyle={styles.stepperButton} useSecondaryColor={true} />
+              <ThemedButton title="+" onPress={() => setCigarettesPerPack(cigarettesPerPack + 1)} containerStyle={styles.stepperButton} useSecondaryColor={true} />
+          </View>
         </SetupItem>
-
-        <SetupItem label="I go to sleep around" value={formData.activeEndTime} onPress={() => handleTimeSelect('activeEndTime')}>
-          <Text style={[styles.valueText, { color: colors.textPrimary }]}>{formData.activeEndTime}</Text>
-        </SetupItem>
-
-        {/* --- SECTION 3: QUIT PLAN --- */}
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Your Quit Strategy</Text>
         
-        {['slow', 'balanced', 'aggressive'].map(plan => (
-          <ThemedButton 
-            key={plan}
-            title={plan.charAt(0).toUpperCase() + plan.slice(1)}
-            containerStyle={[
-              styles.planButton, 
-              formData.planType === plan 
-                ? { backgroundColor: colors.accentPrimary } 
-                : { backgroundColor: colors.backgroundSecondary }
-            ]}
-            textStyle={{ color: formData.planType === plan ? colors.textPrimary : colors.textSecondary }}
-            onPress={() => handleInputChange('planType', plan)}
-            useSecondaryColor={formData.planType !== plan}
-          />
-        ))}
+        {/* СЕКЦІЯ: ТИП ПЛАНУ */}
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>🎯 Тип Плану</Text>
+        
+        {/* ВИБІР ТИПУ ПЛАНУ */}
+        <View style={[styles.planSelectorContainer, { borderColor: colors.separator }]}>
+            <TouchableOpacity 
+                style={[styles.planButton, planType === 'slow' && { backgroundColor: colors.accentPrimary + '15', borderColor: colors.accentPrimary }]} 
+                onPress={() => handlePlanSelect('slow')}
+            >
+                <Text style={[styles.planTitle, { color: colors.textPrimary }]}>Повільний</Text>
+                <Text style={[styles.planDescription, { color: colors.textSecondary }]}>М'яке зменшення, ідеально для тих, хто вперше кидає.</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+                style={[styles.planButton, planType === 'balanced' && { backgroundColor: colors.accentPrimary + '15', borderColor: colors.accentPrimary }]} 
+                onPress={() => handlePlanSelect('balanced')}
+            >
+                <Text style={[styles.planTitle, { color: colors.textPrimary }]}>Збалансований</Text>
+                <Text style={[styles.planDescription, { color: colors.textSecondary }]}>Стандартний, помірний темп з хорошим балансом.</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+                style={[styles.planButton, planType === 'aggressive' && { backgroundColor: colors.accentPrimary + '15', borderColor: colors.accentPrimary }]} 
+                onPress={() => handlePlanSelect('aggressive')}
+            >
+                <Text style={[styles.planTitle, { color: colors.textPrimary }]}>Агресивний</Text>
+                <Text style={[styles.planDescription, { color: colors.textSecondary }]}>Швидке зменшення, для рішучих користувачів.</Text>
+            </TouchableOpacity>
+        </View>
 
       </ScrollView>
 
-      {/* --- SUBMIT BUTTON --- */}
-      <View style={[styles.footer, { borderTopColor: colors.separator }]}>
+      {/* КНОПКА ЗБЕРЕЖЕННЯ */}
+      <View style={[styles.floatingButtonContainer, { borderTopColor: colors.separator }]}>
         <ThemedButton 
-          title={loading ? "Starting Plan..." : "Start My Quit Plan"}
-          onPress={handleSubmit}
-          disabled={loading}
-          containerStyle={styles.submitButton}
+            title={isSaving ? "Збереження..." : "Почати План"}
+            onPress={handleSaveAndGoToApp}
+            disabled={isSaving}
         />
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
-// --- STYLES ---
 
-const screenWidth = Dimensions.get('window').width;
+// --- STYLES ---
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 50 : 30, // Status bar padding
   },
-  scrollContainer: {
+  scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 100, // Space for the floating button
   },
@@ -235,29 +260,39 @@ const styles = StyleSheet.create({
   stepperButton: {
     minWidth: 50,
     paddingVertical: 10,
+    paddingHorizontal: 10,
     borderRadius: 8,
   },
-  // Plan Buttons
-  planButton: {
-    marginBottom: 10,
-    paddingVertical: 12,
-    minWidth: '100%',
-    borderColor: '#ccc', // Add temporary border for clarity
-    borderWidth: 1,
+  // Plan Selector styles
+  planSelectorContainer: {
+    gap: 10,
   },
-  // Footer and Submit Button
-  footer: {
+  planButton: {
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB', // Default separator color
+  },
+  planTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  planDescription: {
+    fontSize: 13,
+  },
+  // Floating Button styles
+  floatingButtonContainer: {
     position: 'absolute',
     bottom: 0,
-    width: '100%',
+    left: 0,
+    right: 0,
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: Platform.OS === 'ios' ? 20 : 10,
     borderTopWidth: 1,
-    backgroundColor: 'white', // Will be overridden by theme in final assembly
+    alignItems: 'center',
   },
-  submitButton: {
-    minWidth: '100%',
-  }
 });
+
 
 export default SetupScreen;
