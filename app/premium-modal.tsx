@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, Tabs } from 'expo-router';
 import React from 'react';
-import {  ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {  ScrollView, StyleSheet, Text, TouchableOpacity, StatusBar, Platform, View } from 'react-native';
 import ThemedButton from '../src/components/ThemedButton';
 
 import { DefaultColors } from '@/src/constants/Colors';
@@ -122,7 +122,18 @@ const styles = StyleSheet.create({
     // ... (Your original styles)
     container: { flex: 1 },
     scrollContent: { flexGrow: 1, paddingBottom: 150 },
-    closeButton: { position: 'absolute', top: 20, right: 20, zIndex: 10, padding: 10, borderRadius: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 5 },
+    closeButton: { 
+        position: 'absolute', 
+        // Використовуємо Platform.OS для адаптації
+        top: Platform.OS === 'android' ? 100 : 20, 
+        right: 20, 
+        zIndex: 999, // Залишаємо високий zIndex
+        padding: 10, 
+        borderRadius: 20, 
+        elevation: 5,
+    // backgroundColor: "tomato"
+}
+    ,
     headerContainer: { alignItems: 'center', paddingTop: 80, paddingBottom: 40 },
     crownIcon: { marginBottom: 15 },
     title: { fontSize: 32, fontWeight: '900', marginBottom: 10, textAlign: 'center' },
