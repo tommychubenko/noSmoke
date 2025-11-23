@@ -2,7 +2,7 @@
   "expo": {
     "name": "noSmoke",
     "slug": "noSmoke",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "nosmoke",
@@ -12,10 +12,7 @@
       "supportsTablet": true
     },
     "android": {
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-3940256099942544~3347511713"
-      },
-      "adaptiveIcon": {
+            "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
@@ -23,7 +20,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.tommychubenko.noSmoke"
+      "package": "com.tommychubenko.noSmoke",
+      "versionCode": 2
     },
     "web": {
       "output": "static",
