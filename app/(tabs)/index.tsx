@@ -2,16 +2,16 @@ import { router } from 'expo-router';
 import React, { useMemo } from 'react';
 import { ActivityIndicator, Dimensions, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 // ВАЖЛИВО: Потрібно встановити 'react-native-svg': npx expo install react-native-svg
-import Svg, { Circle } from 'react-native-svg'; 
+import Svg, { Circle } from 'react-native-svg';
 import ThemedButton from '../../src/components/ThemedButton'; // FIX: Added 'src/' to the path
 import { useTheme } from '../../src/hooks/useTheme';
 import { useTimerLogic } from '../../src/hooks/useTimerLogic';
 import { ROUTES } from '@/src/constants/Routes';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Foundation } from '@expo/vector-icons';
-import mobileAds from "react-native-google-mobile-ads"
-import { RewardedAd,TestIds } from 'react-native-google-mobile-ads';
+import { BannerAd, BannerAdSize, TestIds, RewardedAd } from 'react-native-google-mobile-ads'; // <-- ДОДАНО
 
+const ADMOB_BANNER_ID = __DEV__ ? TestIds.BANNER : 'ВАШ_РЕАЛЬНИЙ_BANNER_ID';
 
 // NOTE: Components like ThemedButton are assumed to be defined elsewhere in the project
 // For a single-file environment, we must mock/define necessary components.
@@ -40,18 +40,18 @@ interface CircularProgressBarProps {
     children: React.ReactNode;
 }
 
-const CircularProgressBar: React.FC<CircularProgressBarProps> = ({ 
-    progress, 
-    size, 
-    strokeWidth, 
-    progressColor, 
-    backgroundColor, 
-    children 
+const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
+    progress,
+    size,
+    strokeWidth,
+    progressColor,
+    backgroundColor,
+    children
 }) => {
     // 1. Обчислюємо розміри
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
-    
+
     // 2. Обчислюємо зміщення для відображення прогресу (0% -> повне зміщення, 100% -> 0 зміщення)
     const strokeDashoffset = circumference - (progress * circumference);
 
@@ -81,12 +81,12 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
                 />
             </Svg>
             {/* Content (Текст/таймер) позиціонується абсолютно в центрі */}
-            <View style={{ 
-                position: 'absolute', 
-                width: size, 
-                height: size, 
-                justifyContent: 'center', 
-                alignItems: 'center' 
+            <View style={{
+                position: 'absolute',
+                width: size,
+                height: size,
+                justifyContent: 'center',
+                alignItems: 'center'
             }}>
                 {children}
             </View>
@@ -101,13 +101,13 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
 
 
 const HomeScreen = () => {
-    const { colors, isUserPremium } = useTheme(); 
+    const { colors, isUserPremium } = useTheme();
     // Use the custom hook to access all timer state and actions
-    const { 
-        setupData, 
-        isLoading, 
-        remainingSeconds, 
-        isTimeUp, 
+    const {
+        setupData,
+        isLoading,
+        remainingSeconds,
+        isTimeUp,
         isPaused,
         recordCigarette,
         formatRemainingTime,
@@ -133,10 +133,10 @@ const HomeScreen = () => {
         if (!setupData) return 'Complete setup to start your plan.';
         if (isLoading) return 'Loading your progress...';
         if (isTimeUp) return 'CONGRATULATIONS! You can smoke now, or keep going!';
-        
+
         const hours = Math.floor(remainingSeconds / 3600);
         const minutes = Math.floor((remainingSeconds % 3600) / 60);
-        
+
         if (hours > 0) return `Just ${hours} more hour${hours > 1 ? 's' : ''} to go!`;
         if (minutes > 0) return `Almost there! Just ${minutes} more minute${minutes > 1 ? 's' : ''}.`;
 
@@ -173,7 +173,7 @@ const HomeScreen = () => {
                         Please start the setup process to get your personalized timer.
                     </Text>
                     <View style={styles.footer}>
-                        <ThemedButton 
+                        <ThemedButton
                             title="Start Setup"
                             onPress={() => router.replace(ROUTES.SETUP)}
                             containerStyle={{ minWidth: 200 }}
@@ -191,25 +191,25 @@ const HomeScreen = () => {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundPrimary }]}>
-            <ScrollView contentContainerStyle={styles.scrollContainer} 
+            <ScrollView contentContainerStyle={styles.scrollContentAdjusted}
                 showsVerticalScrollIndicator={false}
             >
                 <View style={styles.contentContainer}>
-                    
+
                     {/* Status Text */}
                     <Text style={[styles.statusText, { color: isTimeUp ? colors.accentPrimary : colors.textPrimary }]}>
                         {statusMessage}
                     </Text>
-                    
+
                     {/* Timer Circle - NEW SVG IMPLEMENTATION */}
                     {/* Використовуємо View для контролю зовнішніх відступів */}
-                    <View style={{ marginVertical: 40 }}> 
+                    <View style={{ marginVertical: 40 }}>
                         <CircularProgressBar
-                            progress={progressPercent} 
-                            size={250} 
+                            progress={progressPercent}
+                            size={250}
                             strokeWidth={15} // Збільшена товщина лінії
-                            progressColor={isTimeUp ? colors.accentSecondary : colors.accentPrimary} 
-                            backgroundColor={colors.separator} 
+                            progressColor={isTimeUp ? colors.accentSecondary : colors.accentPrimary}
+                            backgroundColor={colors.separator}
                         >
                             {isTimeUp ? (
                                 <Text style={[styles.timerValue, { color: colors.accentPrimary, fontSize: 50 }]}>
@@ -228,19 +228,19 @@ const HomeScreen = () => {
                             </Text>
                         </CircularProgressBar>
                     </View>
-                    
+
                     {/* Info Text */}
                     <Text style={[styles.infoText, { color: colors.textSecondary }]}>
                         Your current target interval is {targetTimeText}.
                     </Text>
                     <Text style={[styles.infoText, { color: colors.textSecondary, marginBottom: 40 }]}>
-                         {isPaused ? 'Timer is paused during inactive hours.' : 'Keep waiting to hit your goal!'}
+                        {isPaused ? 'Timer is paused during inactive hours.' : 'Keep waiting to hit your goal!'}
                     </Text>
 
 
                     {/* Action Button */}
                     <View style={styles.footer}>
-                        <ThemedButton 
+                        <ThemedButton
                             title="I Smoked (Record)"
                             onPress={recordCigarette}
                             disabled={isPaused} // Disable if outside active hours
@@ -250,22 +250,22 @@ const HomeScreen = () => {
 
                     {/* Footer Links/Actions */}
                     <View style={styles.secondaryActions}>
-                        <ThemedButton 
+                        <ThemedButton
                             title="See Stats"
                             onPress={() => router.replace(ROUTES.STATS_TAB)}
                             useSecondaryColor={true}
                             containerStyle={styles.secondaryButton}
                             textStyle={{ fontSize: 14 }}
                         />
-                        {isUserPremium ?  <ThemedButton 
+                        {isUserPremium ? <ThemedButton
                             title="Premium activated"
                             disabled={true}
                             // onPress={() => router.replace(ROUTES.SETTINGS_TAB)}
                             useSecondaryColor={true}
-                            containerStyle={[styles.secondaryButton, {backgroundColor: "transparent",shadowColor:"transparent"}] }
+                            containerStyle={[styles.secondaryButton, { backgroundColor: "transparent", shadowColor: "transparent" }]}
                             icon={<Foundation name="crown" size={24} color={colors.textPrimary} />}
-                            textStyle={{ fontSize: 14 }} 
-                        /> :  <ThemedButton 
+                            textStyle={{ fontSize: 14 }}
+                        /> : <ThemedButton
                             title="Get Premium"
                             onPress={() => router.push(ROUTES.PREMIUM_MODAL)}
                             useSecondaryColor={true}
@@ -276,6 +276,15 @@ const HomeScreen = () => {
 
                 </View>
             </ScrollView>
+            <View style={styles.bannerContainer}>
+                <BannerAd
+                    unitId={ADMOB_BANNER_ID}
+                    size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} // Рекомендований розмір для фіксованого банера
+                    requestOptions={{
+                        requestNonPersonalizedAdsOnly: true,
+                    }}
+                />
+            </View>
         </SafeAreaView>
     );
 };
@@ -293,6 +302,24 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
+    },
+    scrollContentAdjusted: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+        // *** Тут ми додаємо відступ, щоб вміст не перекривався банером знизу ***
+        // Приблизна висота банера ANCHORED_ADAPTIVE_BANNER становить 50-90 одиниць. 
+        // Додамо запас.
+        paddingBottom: 90,
+    },
+    bannerContainer: {
+        position: 'absolute', // Фіксуємо його
+        bottom: 0,           // Притискаємо до низу
+        width: '100%',       // Розтягуємо на всю ширину
+        alignItems: 'center', // Центруємо банер всередині View
+        // Додаємо відступи безпечної зони для iOS X/Android S, якщо SafeAreaView не справляється
+        paddingBottom: Platform.OS === 'ios' ? 0 : 0,
     },
     contentContainer: {
         flex: 1,

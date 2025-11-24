@@ -2,8 +2,8 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../src/hooks/useTheme';
-import { BannerAd, TestIds, BannerAdSize } from 'react-native-google-mobile-ads';
-import { StatusBar } from 'expo-status-bar';
+import MobileAds  from 'react-native-google-mobile-ads';
+
 
 /**
  * Цей файл налаштовує нижню панель навігації (Tabs) для основних екранів додатка.
@@ -17,7 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 const TabsLayout = () => {
   const { colors } = useTheme();
 
-  
+  MobileAds().initialize()
 
   return (
     <>
