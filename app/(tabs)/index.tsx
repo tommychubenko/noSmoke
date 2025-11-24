@@ -11,7 +11,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Foundation } from '@expo/vector-icons';
 import { BannerAd, BannerAdSize, TestIds, RewardedAd } from 'react-native-google-mobile-ads'; // <-- ДОДАНО
 
-const ADMOB_BANNER_ID = __DEV__ ? TestIds.BANNER : 'ВАШ_РЕАЛЬНИЙ_BANNER_ID';
+const ADMOB_BANNER_ID = __DEV__ 
+    ? TestIds.BANNER // 1. Використовуємо тестовий ID в режимі розробки
+    : Platform.select({ // 2. Вибираємо ID для релізу
+        ios: 'ca-app-pub-6658861467026382~3148246399', // Реальний ID для iOS
+        android: 'ca-app-pub-6658861467026382~6565581373', // Реальний ID для Android
+        default: TestIds.BANNER, // Запасний варіант (хоча тут не потрібен, але для чистоти)
+    });
 
 // NOTE: Components like ThemedButton are assumed to be defined elsewhere in the project
 // For a single-file environment, we must mock/define necessary components.
@@ -277,13 +283,13 @@ const HomeScreen = () => {
                 </View>
             </ScrollView>
             <View style={styles.bannerContainer}>
-                <BannerAd
+                {!isUserPremium ? <BannerAd
                     unitId={ADMOB_BANNER_ID}
                     size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} // Рекомендований розмір для фіксованого банера
                     requestOptions={{
                         requestNonPersonalizedAdsOnly: true,
                     }}
-                />
+                /> : null}
             </View>
         </SafeAreaView>
     );
