@@ -4,13 +4,22 @@ import { SetupData, SmokingLogEntry } from "../services/storageService";
 import { Vibration, Platform } from "react-native";
 // 1. Імпорт сповіщень
 import * as Notifications from 'expo-notifications';
-import { TimeIntervalTriggerInput } from 'expo-notifications'
+// Імпортуємо обидва типи тригерів, хоча використовуємо date
+import { TimeIntervalTriggerInput, DateTriggerInput } from 'expo-notifications' 
 
 // --- CONSTANTS ---
 const MS_PER_SECOND = 1000;
 const ACTIVE_HOURS_PER_DAY = 16;
 const ACTIVE_SECONDS_PER_DAY = ACTIVE_HOURS_PER_DAY * 3600; 
 const MAX_INTERVAL = 24 * 3600; 
+
+// 🔴 ТЕСТУВАННЯ ВИМКНЕНО: Встановлено на 0.
+const TEST_OVERRIDE_INTERVAL = 0; 
+
+// 🟢 ФІКС: КОМПЕНСАЦІЯ ЗАТРИМКИ ОС.
+// Зменшуємо буфер до 27 секунд (35 - 8 = 27), щоб сповіщення прийшло
+// приблизно за 2-3 секунди до завершення таймера, компенсуючи лаг OS (~25 сек).
+const NOTIFICATION_EARLY_BUFFER_SECONDS = 27; 
 
 const TARGET_DAYS = {
     slow: 30, 
@@ -70,7 +79,10 @@ const calculatePlanMetrics = (setup: SetupData): { intervalDuration: number; tar
     }
 
     const daysPassed = getDaysPassed(startDate);
-    const targetDays = TARGET_DAYS[planType] || TARGET_DAYS.balanced;
+    
+    // 🟢 ФІКС: Приведення типу (type assertion) для 'planType'
+    const targetDays = TARGET_DAYS[planType as keyof typeof TARGET_DAYS] || TARGET_DAYS.balanced;
+    
     const reductionPerDay = Math.ceil(cigarettesPerDay / targetDays);
     const reductionAmount = reductionPerDay * daysPassed;
     
@@ -89,7 +101,13 @@ const calculatePlanMetrics = (setup: SetupData): { intervalDuration: number; tar
         derivedInterval = ACTIVE_SECONDS_PER_DAY / finalTargetCPD;
     }
 
-    const finalInterval = Math.floor(Math.min(derivedInterval, MAX_INTERVAL));
+    let finalInterval = Math.floor(Math.min(derivedInterval, MAX_INTERVAL));
+    
+    // Перевірка на тестовий режим
+    if (TEST_OVERRIDE_INTERVAL > 0) {
+        console.log(`[TEST MODE] Overriding interval to ${TEST_OVERRIDE_INTERVAL} seconds.`);
+        finalInterval = TEST_OVERRIDE_INTERVAL;
+    }
 
     return { 
         intervalDuration: finalInterval, 
@@ -113,40 +131,71 @@ export const useTimerLogic = (): UseTimerLogicResult => {
 
     // --- 2. Helper Logic + Notification Scheduler ---
 
-    // Функція для планування сповіщення
-    // Функція для планування сповіщення
-// Функція для планування сповіщення
-// Функція для планування сповіщення
-// Функція для планування сповіщення
-const scheduleSmokeNotification = async (secondsFromNow: number) => {
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    // 🟢 ФІКС: Функція планування тепер приймає ТОЧНИЙ МІЛІСЕКУНДНИЙ ЧАС (timestamp)
+    const scheduleSmokeNotification = useCallback(async (notificationTimeMs: number) => {
+        // 🟢 ПОТІК: Лог на початку функції
+        console.log("[FLOW] Attempting to schedule notification.");
+        
+        // 🟢 ДІАГНОСТИКА: Перевіряємо, чи є вже заплановані сповіщення перед плануванням нового
+        try {
+             const scheduledBefore = await Notifications.getAllScheduledNotificationsAsync();
+             console.log(`[DIAGNOSTIC] Before scheduling, found ${scheduledBefore.length} notification(s).`);
+        } catch (e) {
+            console.error("Error checking scheduled notifications before planning:", e);
+        }
+       
 
-    if (secondsFromNow <= 1) return; 
+        const now = Date.now();
+        // Якщо час вже минув, не плануємо
+        if (notificationTimeMs <= now) {
+            console.log("[Notification] Scheduling skipped (Time is in the past).");
+            return;
+        }
 
-    await Notifications.scheduleNotificationAsync({
-        content: {
-            title: "Час вийшов! 🚬",
-            body: "Ви можете записати паління або продовжити чекати.",
-            sound: true,
-            vibrate: [0, 250, 250, 250],
-        },
-        // --- ФІКС: Приведення типу ---
-        trigger: {
-            seconds: secondsFromNow,
-            repeats: false, 
-        } as TimeIntervalTriggerInput, // <--- Використовуємо 'as'
-    });
-};
+        const secondsFromNow = Math.ceil((notificationTimeMs - now) / MS_PER_SECOND);
 
+        try {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: "Час вийшов! 🚬",
+                    body: "Ви можете записати паління або продовжити чекати.",
+                    sound: true,
+                    vibrate: [0, 250, 250, 250],
+                },
+                // 🟢 ВИКОРИСТОВУЄМО ТРИГЕР ЗА ТОЧНОЮ ДАТОЮ (DateTriggerInput)
+                trigger: {
+                    type: 'date', // <--- ФІКС: Обов'язкове поле для DateTriggerInput
+                    date: new Date(notificationTimeMs), // Плануємо на точний час
+                    repeats: false, 
+                } as DateTriggerInput, // Вказуємо тип тригера
+            });
+            console.log("Notification scheduled successfully for", secondsFromNow, "seconds from now (at time:", new Date(notificationTimeMs).toLocaleTimeString(), ").");
+            
+            // 🟢 ДІАГНОСТИКА: Перевіряємо, чи є тепер 1 заплановане сповіщення
+            const scheduledAfter = await Notifications.getAllScheduledNotificationsAsync();
+            console.log(`[DIAGNOSTIC] After scheduling, found ${scheduledAfter.length} notification(s).`);
+
+        } catch (error) {
+            console.error("Failed to schedule notification:", error);
+        }
+    }, []);
+
+    // 🟢 ФУНКЦІЯ РОЗРАХУНКУ: determineNextAllowedTime тепер лише розраховує та оновлює стан React UI.
+    // Вона повертає кількість секунд, що залишилася, для зовнішнього планування сповіщення.
     const determineNextAllowedTime = useCallback(
-        (setup: SetupData, logs: SmokingLogEntry[], duration: number) => {
+        (setup: SetupData, logs: SmokingLogEntry[], duration: number): number => {
             const now = Date.now();
             setIsPaused(false);
+            
+            // Визначаємо, чи був лог створений менше 500 мс тому
+            const isFreshlyLogged = logs.length > 0 && (now - logs[logs.length - 1].timestamp < 500);
+            let finalSeconds = 0;
+
 
             if (logs.length === 0) {
                 setNextAllowedSmokeTime(now);
                 setRemainingSeconds(0);
-                // Якщо логів немає, можна курити відразу - сповіщення не потрібне (або можна відразу)
+                // Скасування для початкового стану без логів
                 Notifications.cancelAllScheduledNotificationsAsync(); 
             } else {
                 const lastLog = logs[logs.length - 1];
@@ -154,29 +203,38 @@ const scheduleSmokeNotification = async (secondsFromNow: number) => {
                 setNextAllowedSmokeTime(nextTime);
 
                 const difference = nextTime - now;
-                const secondsRemaining = Math.max(
+                
+                let secondsRemaining = Math.max(
                     0,
-                    Math.ceil(difference / MS_PER_SECOND)
+                    // Використовуємо Math.ceil для UI
+                    Math.ceil(difference / MS_PER_SECOND) 
                 );
                 
-                setRemainingSeconds(secondsRemaining);
-
-                // --- ТУТ ПЛАНУЄМО СПОВІЩЕННЯ ---
-                // Якщо залишився час (> 0), плануємо сповіщення
-                if (secondsRemaining > 0) {
-                    scheduleSmokeNotification(secondsRemaining);
-                } else {
-                    // Якщо час вже вийшов, переконуємось, що старих сповіщень немає
-                    Notifications.cancelAllScheduledNotificationsAsync();
+                // 🟢 ФІКС: Запобігання миттєвому спрацьовуванню (race condition)
+                if (secondsRemaining === 0 && duration > 0 && isFreshlyLogged) {
+                    secondsRemaining = 1; 
                 }
+                
+                finalSeconds = secondsRemaining;
+
+                setRemainingSeconds(finalSeconds);
+
+                // --- ДІАГНОСТИКА ---
+                console.log(`[Timer] Calculated next time: ${new Date(nextTime).toLocaleTimeString()}`);
+                console.log(`[Timer] Time difference: ${difference}ms. Final seconds for UI: ${finalSeconds}`);
             }
+            
+            return finalSeconds; // Повертаємо, скільки секунд залишилося
         },
-        []
+        [] 
     );
 
     // --- 3. Core Function: Load/Refresh Data ---
 
     const loadInitialData = useCallback(async () => {
+        // 🟢 ПОТІК: Лог на початку функції
+        console.log("[FLOW] Starting loadInitialData (Refresh Data)");
+
         setIsLoading(true);
 
         const logs = await storageService.getSmokingLogs();
@@ -188,21 +246,41 @@ const scheduleSmokeNotification = async (secondsFromNow: number) => {
             const { intervalDuration: duration, targetCigarettesPerDay: targetCPD } = calculatePlanMetrics(setup); 
             setIntervalDuration(duration);
             setTargetCigarettesPerDay(targetCPD); 
-
+            
             determineNextAllowedTime(setup, logs, duration);
+            
         } else {
             setSetupData(null);
             setIntervalDuration(0);
             setTargetCigarettesPerDay(0);
             setNextAllowedSmokeTime(null);
             setRemainingSeconds(0);
+            // Залишаємо скасування, якщо налаштування відсутні (очищення)
+            Notifications.cancelAllScheduledNotificationsAsync(); 
         }
 
         setIsLoading(false);
-    }, [determineNextAllowedTime]);
+
+        // 🟢 ДОДАТКОВА ПЕРЕВІРКА ДОЗВОЛІВ
+        const { status } = await Notifications.getPermissionsAsync();
+
+        if (status === 'granted') {
+             // 🟢 ДІАГНОСТИКА: Перевіряємо, чи залишилися заплановані сповіщення після завантаження/оновлення
+            const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+            if (scheduled.length > 0) {
+                console.log(`[DIAGNOSTIC] SUCCESS: Found ${scheduled.length} scheduled notification(s) after refresh/focus.`);
+            } else {
+                console.warn("[DIAGNOSTIC] FAILURE: No scheduled notifications found after refresh/focus!");
+            }
+        } else {
+            console.warn("[DIAGNOSTIC] Cannot check scheduled status - Permissions not granted!");
+        }
+
+
+    }, [determineNextAllowedTime]); 
 
     // --- 4. Effects ---
-
+    
     useEffect(() => {
         loadInitialData();
         
@@ -210,7 +288,10 @@ const scheduleSmokeNotification = async (secondsFromNow: number) => {
         const requestPermissions = async () => {
             const { status } = await Notifications.getPermissionsAsync();
             if (status !== 'granted') {
-                await Notifications.requestPermissionsAsync();
+                 const finalStatus = await Notifications.requestPermissionsAsync();
+                 console.log("Notification permission status after request:", finalStatus.status);
+            } else {
+                console.log("Notification permissions already granted.");
             }
         };
         requestPermissions();
@@ -219,6 +300,7 @@ const scheduleSmokeNotification = async (secondsFromNow: number) => {
 
     // Таймер зворотного відліку (тільки для UI)
     useEffect(() => {
+        // Умова зупинки/вихіду, якщо немає даних або час вийшов
         if (
             isLoading ||
             !setupData ||
@@ -226,6 +308,7 @@ const scheduleSmokeNotification = async (secondsFromNow: number) => {
             nextAllowedSmokeTime === null ||
             remainingSeconds <= 0
         ) {
+            // Цей блок лише гарантує, що при виході з таймера remainingSeconds === 0
             if (remainingSeconds <= 0 && nextAllowedSmokeTime !== null) {
                  setRemainingSeconds(0);
             }
@@ -235,6 +318,8 @@ const scheduleSmokeNotification = async (secondsFromNow: number) => {
         const timerInterval = setInterval(() => {
             const now = Date.now();
             const difference = nextAllowedSmokeTime - now;
+            
+            // Використовуємо Math.ceil для UI, щоб показати повну секунду
             const secondsRemaining = Math.max(
                 0,
                 Math.ceil(difference / MS_PER_SECOND)
@@ -251,35 +336,62 @@ const scheduleSmokeNotification = async (secondsFromNow: number) => {
 
         return () => clearInterval(timerInterval);
     }, [setupData, intervalDuration, nextAllowedSmokeTime, isLoading]); 
-    // Примітка: remainingSeconds видалено з deps, щоб уникнути re-render loop, але логіка всередині працює коректно
 
     // --- 5. Action: Record Cigarette ---
 
     const recordCigarette = useCallback(async () => {
+        // 🟢 ПОТІК: Лог на початку функції
+        console.log("[FLOW] Starting recordCigarette (New Log)");
+
         if (!setupData || intervalDuration <= 0) {
             console.warn(
                 "Attempted to record cigarette before setup or while loading."
             );
             return;
         }
-
+        
+        // 🟢 ЯВНЕ СКАСУВАННЯ: Агресивно вбиваємо старий таймер
+        // ЦЕЙ БЛОК ПОВИНЕН ЗАЛИШАТИСЯ, бо ми плануємо НОВЕ сповіщення.
+        await Notifications.cancelAllScheduledNotificationsAsync();
+        await Notifications.dismissAllNotificationsAsync();
+        
         // Re-calculate metrics 
         const { intervalDuration: currentDuration, targetCigarettesPerDay: targetCPD } = calculatePlanMetrics(setupData);
         setIntervalDuration(currentDuration);
         setTargetCigarettesPerDay(targetCPD);
 
-        // Log the event 
-        const newLogEntry: SmokingLogEntry = { timestamp: Date.now() };
+        // 1. 🟢 ФІКС: Фіксуємо ТОЧНИЙ час початку та створюємо лог
+        const logTimestamp = Date.now();
+        const newLogEntry: SmokingLogEntry = { timestamp: logTimestamp };
         await storageService.addSmokingLog(newLogEntry);
 
         // Update local state logs
         const newLogs = [...smokingLogs, newLogEntry];
         setSmokingLogs(newLogs);
 
-        // Reset the timer AND Schedule Notification (відбувається всередині determineNextAllowedTime)
-        determineNextAllowedTime(setupData, newLogs, currentDuration);
+        // 2. 🟢 РОЗРАХУНОК: Визначаємо точний час завершення таймера (T_end)
+        const nextAllowedTimeMs = logTimestamp + currentDuration * MS_PER_SECOND;
+        
+        // Оновлюємо UI, повертаючи залишок секунд (для UI)
+        const secondsRemaining = determineNextAllowedTime(setupData, newLogs, currentDuration);
         Vibration.vibrate(5);
-    }, [setupData, smokingLogs, determineNextAllowedTime]);
+
+        // 3. 🟢 ЯВНЕ ПЛАНУВАННЯ: Визначаємо точний час для сповіщення
+        // Встановлюємо на (T_end - 27 секунд), щоб компенсувати 25-секундний лаг OS і прийти за ~2с до 0.
+        const notificationTimeMs = nextAllowedTimeMs - NOTIFICATION_EARLY_BUFFER_SECONDS * MS_PER_SECOND;
+        
+        // Цей показник лише для логіки, чи варто планувати взагалі
+        const notificationSeconds = Math.max(0, secondsRemaining - NOTIFICATION_EARLY_BUFFER_SECONDS); 
+
+        // 🟢 ФІКС: Плануємо, використовуючи ТОЧНУ МІЛІСЕКУНДНУ ДАТУ
+        if (notificationSeconds > 1) { 
+             // Передаємо точний час спрацювання (T_notify)
+             scheduleSmokeNotification(notificationTimeMs);
+        } else {
+            console.log("[Timer] Notification not scheduled (Interval too short/passed or is 0).");
+        }
+        
+    }, [setupData, smokingLogs, determineNextAllowedTime, scheduleSmokeNotification]);
 
     // --- 6. Final Result ---
 

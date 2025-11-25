@@ -100,9 +100,7 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
     );
 };
 
-// mobileAds().initialize().then((adapterStatuses) => {console.log(adapterStatuses)})
-// const adUnitId = __DEV__ ? TestIds.REWARDED : "xxx-xxx-xxx-xxx/yyyy-yyy-yyyy-yyyy"
-// const rewarded = RewardedAd.createForAdRequest(adUnitId, {keywords: ["fashion", 'clothing']})
+
 
 
 

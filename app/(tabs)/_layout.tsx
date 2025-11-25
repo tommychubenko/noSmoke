@@ -44,6 +44,9 @@ const TabsLayout = () => {
         name="index" 
         options={{
           title: 'Головна',
+           // @ts-ignore: unmountOnBlur потрібен для підтримки активності таймера при переході на інші вкладки,
+          // але відсутній у типі TabsProps.
+          unmountOnBlur: false,
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="timer-sand" size={size} color={color} />
           ),

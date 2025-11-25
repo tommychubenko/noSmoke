@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Dimensions, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import ThemedButton from '../src/components/ThemedButton';
 import { ROUTES } from '../src/constants/Routes';
 import { useTheme } from '../src/hooks/useTheme';
-import { SetupData, saveSetupData } from '../src/services/storageService'; 
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SetupData, saveSetupData } from '../src/services/storageService';
 
 // Використовуємо просту TouchableOpacity для сумісності з React Native
 import { TouchableOpacity as RNTouchableOpacity } from 'react-native';
@@ -44,7 +44,7 @@ const SetupScreen = () => {
   // --- 1. СТАН ДАНИХ ДЛЯ ФОРМИ ---
   const [activeStartTime, setActiveStartTime] = useState('08:00');
   const [activeEndTime, setActiveEndTime] = useState('23:00');
-  const [cigarettesPerDay, setCigarettesPerDay] = useState(20);
+  const [cigarettesPerDay, setCigarettesPerDay] = useState(1200);
   const [planType, setPlanType] = useState<'slow' | 'balanced' | 'aggressive'>('balanced');
   
   // ✅ ДОДАНО СТАНОВІ ЗМІННІ ДЛЯ ФІНАНСІВ:
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '800',
     marginTop: 25,
     marginBottom: 15,
   },
