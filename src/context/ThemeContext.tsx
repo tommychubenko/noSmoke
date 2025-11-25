@@ -18,14 +18,12 @@ interface ThemeContextData {
   /** The technical name of the current theme. */
   currentThemeName: ThemeName;
   /** True if the user has an active Premium subscription. */
-  isUserPremium: boolean; // ДОДАНО
-  /** Function to manually set the Premium status. */
-  setUserPremiumStatus: (isPremium: boolean) => Promise<void>; // ДОДАНО
+  isUserPremium: boolean; 
+  /** Function to manually set the Premium status. ВИКОРИСТОВУЄТЬСЯ ЛИШЕ RC */
+  setUserPremiumStatus: (isPremium: boolean) => void; // ЗМІНА: Прибрано Promise<void>
 }
 
-// --- INITIAL STATE ---
-
-// Get the default theme colors and structure
+// --- INITIAL STATE ---\r\n\r\n// Get the default theme colors and structure
 const initialTheme = getThemeByName(DEFAULT_THEME);
 
 // Default context value before any state is set
@@ -34,48 +32,44 @@ const defaultContextValue: ThemeContextData = {
   setAppTheme: () => { }, // Placeholder function
   colors: initialTheme.colors,
   currentThemeName: DEFAULT_THEME,
-  isUserPremium: false, // ДОДАНО
-  setUserPremiumStatus: async () => { }, // ДОДАНО
+  isUserPremium: false, 
+  setUserPremiumStatus: () => {}, 
 };
 
-// --- CONTEXT CREATION ---
+// --- СТВОРЕННЯ КОНТЕКСТУ ---
+export const ThemeContext = createContext<ThemeContextData | undefined>(defaultContextValue);
 
-export const ThemeContext = createContext<ThemeContextData>(defaultContextValue);
 
-// --- PROVIDER COMPONENT ---
+// --- КОМПОНЕНТ ПРОВАЙДЕРА ---
 
+/**
+ * Defines the props for ThemeProvider.
+ */
 interface ThemeProviderProps {
   children: ReactNode;
-  // Ініціалізаційні дані, завантажені в RootLayout
+  /** Initial theme name loaded from storage. */
   initialThemeName: ThemeName;
-  initialIsPremium: boolean; // ДОДАНО
+  /** Initial Premium status loaded from storage or set by RC. */
+  initialIsPremium: boolean; // Оновлено
 }
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({
-  children,
-  initialThemeName,
-  initialIsPremium // ВИКОРИСТАННЯ
+/**
+ * Provides the current theme, colors, and the function to change the theme
+ * to the entire application using React Context.
+ */
+export const ThemeProvider: React.FC<ThemeProviderProps> = ({ 
+  children, 
+  initialThemeName, 
+  initialIsPremium 
 }) => {
-  // State to hold the theme name.
+  // --- STATE ---
   const [themeName, setThemeName] = useState<ThemeName>(initialThemeName);
+  const [currentTheme, setCurrentTheme] = useState<AppTheme>(getThemeByName(initialThemeName));
+  const [isUserPremium, setIsUserPremium] = useState<boolean>(initialIsPremium); // Оновлено
 
-  // State to hold the full theme object, derived from themeName.
-  const [currentTheme, setCurrentTheme] = useState<AppTheme>(() => getThemeByName(initialThemeName));
+  // --- ЛОГІКА ---
 
-  // State to track premium status.
-  const [isUserPremium, setIsUserPremium] = useState(initialIsPremium); // ДОДАНО
-
-  // Effect to handle external changes to initialThemeName/initialIsPremium
-  useEffect(() => {
-    // Sync state if props change (useful during initial load in RootLayout)
-    const newTheme = getThemeByName(initialThemeName);
-    setThemeName(newTheme.name);
-    setCurrentTheme(newTheme);
-    setIsUserPremium(initialIsPremium); // СИНХРОНІЗАЦІЯ
-  }, [initialThemeName, initialIsPremium]); // ДОДАНО initialIsPremium як залежність
-
-
-  // Function to change the theme and save it to storage.
+  // Function to set the new theme and save it to storage.
   const setAppTheme = useCallback(async (newThemeName: ThemeName) => {
     const newTheme = getThemeByName(newThemeName);
 
@@ -93,28 +87,31 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     }
   }, []);
 
-  // Function to set Premium status and save it to storage.
-  const setUserPremiumStatus = useCallback(async (isPremium: boolean) => {
+  // Function to set Premium status. ВИКЛИКАЄТЬСЯ ТІЛЬКИ З RevenueCatContext.
+  const setUserPremiumStatus = useCallback((isPremium: boolean) => {
     // 1. Update React State
     setIsUserPremium(isPremium);
 
-    // 2. Save to Storage
+    // 2. ЗБЕРЕЖЕННЯ В СХОВИЩЕ:
+    // Хоча RevenueCat є джерелом правди, ми зберігаємо статус локально,
+    // щоб запобігти короткочасному мерехтінню "не-преміум" при старті
+    // до моменту, поки RevenueCat не завантажить дані.
     try {
-      const appSettings = await storageService.getAppSettings();
-      // Зберігаємо новий статус Premium, зберігаючи поточну тему
-      await storageService.saveAppSettings({ ...appSettings, isPremium: isPremium });
+      storageService.saveAppSettings({ themeName, isPremium });
     } catch (e) {
-      console.error("Error saving premium status:", e);
+      console.error("Error saving premium status (RC update):", e);
     }
-  }, []); // ДОДАНО
+  }, [themeName]); // ВИПРАВЛЕНО: залежить від themeName для коректного збереження
+
+  // --- КОНТЕКСТ ---
 
   const contextValue: ThemeContextData = {
     currentTheme,
     setAppTheme,
     colors: currentTheme.colors,
     currentThemeName: themeName,
-    isUserPremium, // ДОДАНО
-    setUserPremiumStatus, // ДОДАНО
+    isUserPremium, // ВЖЕ ОНОВЛЕНО ЧЕРЕЗ setIsUserPremium або initialIsPremium
+    setUserPremiumStatus, 
   };
 
   return (

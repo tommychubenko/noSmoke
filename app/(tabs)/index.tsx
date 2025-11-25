@@ -11,7 +11,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Foundation } from '@expo/vector-icons';
 import { BannerAd, BannerAdSize, TestIds, RewardedAd } from 'react-native-google-mobile-ads'; // <-- ДОДАНО
 import { AppColors } from '@/src/constants/Colors';
-import { handleResetData } from '@/src/services/storageService';
 import ResetDataButton from '@/src/components/ResetDataButton';
 
 const ADMOB_BANNER_ID = __DEV__

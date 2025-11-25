@@ -1,16 +1,46 @@
-import { AppColors, ThemeName } from "@/src/constants/Colors";
+import { AppColors, ThemeName, DEFAULT_THEME } from "@/src/constants/Colors"; 
 import { ROUTES } from "@/src/constants/Routes";
 // Додаємо імпорт storageService, оскільки він використовується в useEffect
 import * as storageService from "@/src/services/storageService";
 import { SetupData } from "@/src/services/storageService";
-import { Stack, router } from "expo-router";
+import { Stack, router, usePathname } from "expo-router"; // <-- ДОДАНО usePathname
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Text, View } from "react-native";
 import { ThemeProvider } from "../src/context/ThemeContext";
 import { StatusBar } from "expo-status-bar"; // Компонент для керування статус-баром
 import { useTheme } from "@/src/hooks/useTheme"; // Ваш хук для отримання поточної теми
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import { AppTheme, getThemeByName } from "@/src/constants/Themes"; 
 
-// ...
+
+// --- ДОПОМІЖНІ КОМПОНЕНТИ ---
+
+/**
+ * Custom component to manage the StatusBar style based on the current theme.
+ * Must be rendered inside ThemeProvider.
+ */
+const ThemeStatusBar: React.FC = () => {
+    const { currentTheme } = useTheme();
+
+    const isDark = currentTheme.isDark;
+    
+    // Визначаємо стиль статус-бару: 'light' для темних тем, 'dark' для світлих
+    const statusBarStyle = isDark ? 'light' : 'dark';
+
+    // На Android явно встановлюємо колір фону статус-бару
+    const backgroundColor = currentTheme.colors.backgroundPrimary;
+
+    return (
+        // Встановлюємо стиль статус-бару
+        <StatusBar 
+            style={statusBarStyle} 
+            backgroundColor={Platform.OS === 'android' ? backgroundColor : 'transparent'} 
+            animated={true}
+        />
+    );
+};
+
 
 // --- ІНТЕРФЕЙСИ ---
 
@@ -21,101 +51,100 @@ interface InitializationState {
   // Якщо процес завантаження даних завершено.
   isReady: boolean;
   // Дані налаштування користувача. Null означає, що налаштування не завершено.
-  setupData: SetupData | null;
+  setupData: storageService.SetupData | null;
   // Збережена назва теми зі сховища.
-  savedThemeName: ThemeName;
-  // Збережений статус Premium зі сховища. (ДОДАНО)
+  savedThemeName: ThemeName; 
+  // Збережений статус Premium зі сховища.
   savedIsPremium: boolean;
 }
 
 // --- КОМПОНЕНТ КОРЕНЕВОГО МАКЕТА ---
 
 /**
- * The Root Layout component handles app initialization, theme context provision,
- * and conditional routing based on whether the initial setup is complete.
+ * The Root Layout component handles initial data loading,
+ * authentication, and sets up the global theme provider and navigation.
  */
-
-
-const ThemeStatusBar = () => {
-    // 👇 useTheme() викликається ТУТ, всередині компонента
-    const { currentTheme, colors } = useTheme(); 
-    
-    const statusBarStyle = currentTheme.isDark ? 'light' : 'dark'; 
-
-    return (
-      <StatusBar 
-        style={statusBarStyle} 
-        // 🚨 КРИТИЧНО для Android: явно встановлюємо фон
-        backgroundColor={colors.backgroundPrimary} 
-        animated={true}
-        translucent={false}
-      />
-    );
-};
-
 const RootLayout = () => {
+  // 1. Стан ініціалізації
   const [initialization, setInitialization] = useState<InitializationState>({
     isReady: false,
     setupData: null,
-    // Використовуємо тему за замовчуванням, доки не завантажимо збережену
-    savedThemeName: AppColors.Theme3.name as ThemeName,
-    savedIsPremium: false, // Ініціалізуємо статус Premium як false
+    // Використовуємо DEFAULT_THEME, який є типом ThemeName
+    savedThemeName: DEFAULT_THEME, 
+    savedIsPremium: false,
   });
+  
+  // Отримуємо поточний шлях за допомогою хука usePathname()
+  const currentPathname = usePathname(); // <-- ВИКЛИК НОВОГО ХУКА
 
-
-
-  // 1. Логіка ініціалізації: Завантаження даних налаштування та теми
+  // --- ЕФЕКТ 1: Первинне завантаження даних та навігація (Запускається 1 раз) ---
   useEffect(() => {
-    const initializeApp = async () => {
+    const loadInitialData = async () => {
       try {
-        // Завантажуємо всі необхідні початкові дані одночасно
-        const [setup, settings] = await Promise.all([
+        const [setupData, appSettings] = await Promise.all([
           storageService.getSetupData(),
           storageService.getAppSettings(),
         ]);
 
+        // Оновлюємо стан і позначаємо, що готово
         setInitialization({
           isReady: true,
-          setupData: setup,
-          savedThemeName: settings.themeName,
-          savedIsPremium: settings.isPremium, // Зберігаємо статус Premium
+          setupData: setupData,
+          savedThemeName: appSettings.themeName,
+          savedIsPremium: appSettings.isPremium,
         });
+
+        // ПЕРВИННЕ ПЕРЕНАПРАВЛЕННЯ
+        if (setupData) {
+          router.replace(ROUTES.TABS_GROUP);
+        } else {
+          router.replace(ROUTES.SETUP);
+        }
+
       } catch (e) {
-        console.error("Помилка ініціалізації:", e);
-        // Все одно встановлюємо isReady в true, щоб дозволити навігацію
-        setInitialization((prev) => ({ ...prev, isReady: true }));
+        console.error("Initialization failed:", e);
+        // Якщо помилка, все одно позначаємо, що готово, щоб уникнути зациклення завантаження
+        setInitialization(prev => ({ ...prev, isReady: true }));
+        router.replace(ROUTES.SETUP); // У випадку помилки переходимо на екран налаштування
       }
     };
-    initializeApp();
-  }, []); // Запускаємо лише один раз при монтуванні
 
-  // 2. Логіка умовної маршрутизації
+    loadInitialData();
+  }, []); // Пустий масив залежностей: запускається лише при монтуванні
+
+  // --- ЕФЕКТ 2: Слухач змін SetupData (Запускається, коли isReady = true) ---
   useEffect(() => {
-    if (initialization.isReady) {
-      if (!initialization.setupData) {
-        // Якщо немає даних налаштування, переходимо до екрана налаштування
-        router.replace(ROUTES.SETUP);
-      } else {
-        // В іншому випадку, переходимо до головного екрана вкладок
-        // ВИПРАВЛЕННЯ: Використовуємо кореневий шлях '/', який тепер відповідає HOME_TAB
-        router.replace(ROUTES.HOME_TAB);
-      }
-    }
-  }, [initialization.isReady, initialization.setupData]);
+    // Активація лише після завершення первинного завантаження
+    if (!initialization.isReady) return;
 
-  // 3. Екран завантаження
+    const unsubscribe = storageService.onSetupDataChange((data) => {
+      
+        // 1. Оновлюємо setupData у стані (важливо для відображення UI та інших компонентів)
+        setInitialization(prev => ({ ...prev, setupData: data }));
+
+        // 2. ЛОГІКА ДИНАМІЧНОЇ НАВІГАЦІЇ
+        // Використовуємо currentPathname замість router.pathname
+        if (data && currentPathname === ROUTES.SETUP) { // <-- ВИПРАВЛЕНО
+            // Налаштування було щойно завершено. Переходимо до вкладок.
+            console.log("[Setup] Setup complete. Navigating to tabs.");
+            router.replace(ROUTES.TABS_GROUP);
+        } else if (!data && currentPathname !== ROUTES.SETUP) { // <-- ВИПРАВЛЕНО
+            // Дані налаштування були видалені (наприклад, через скидання). Переходимо до налаштування.
+            console.log("[Setup] Setup data cleared. Navigating to setup.");
+            router.replace(ROUTES.SETUP);
+        }
+    });
+
+    // Очищення слухача при демонтажі компонента або зміні залежностей
+    return () => unsubscribe();
+    // Додаємо currentPathname в залежності, щоб useEffect бачив його зміни
+  }, [initialization.isReady, currentPathname]); // <-- ДОДАНО currentPathname
+
+  // 4. Екран завантаження
   if (!initialization.isReady) {
-    // Показуємо простий індикатор завантаження, поки чекаємо на дані сховища
+    // Використовуємо Theme3 для завантаження, оскільки тема ще не застосована
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: AppColors.Theme3.backgroundPrimary,
-        }}
-      >
-     
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: AppColors.Theme3.backgroundPrimary }}>
         <ActivityIndicator
           size="large"
           color={AppColors.Theme3.accentPrimary}
@@ -128,42 +157,43 @@ const RootLayout = () => {
   }
 
 
-
-  // 4. Основна структура додатку, обгорнута в ThemeProvider
+  // 5. Основна структура додатку, обгорнута в ThemeProvider
   return (
     // ThemeProvider має бути ініціалізований зі збереженими налаштуваннями
     <ThemeProvider
+      // Тепер savedThemeName гарантовано має тип ThemeName
       initialThemeName={initialization.savedThemeName}
-      initialIsPremium={initialization.savedIsPremium} // ПЕРЕДАЄМО НОВИЙ ПРОПС
-    ><ThemeStatusBar />
-      <Stack
-        screenOptions={{
-          headerShown: false, // Приховуємо заголовок за замовчуванням
-          // statusBarTranslucent: false,
-        }}
-      >
-        {/* Екран 'setup' повинен бути доступний поза групою вкладок */}
-        <Stack.Screen
-          name="setup"
-          options={{ animation: "slide_from_bottom" }}
-        />
-
-        {/* Група '(tabs)' містить основну навігацію (Home, Stats, Settings) */}
-        <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
-
-        {/* Спеціальні модальні екрани */}
-        <Stack.Screen
-          name="premium-modal"
-          options={{
-
-            title: "Отримати Premium",
-
-            // 👇 Ця опція примусово встановлює анімацію "знизу вгору" на всіх платформах
-            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: 'slide_from_bottom',
+      initialIsPremium={initialization.savedIsPremium}
+    >
+        {/* Статус-бар має бути всередині ThemeProvider */}
+        <ThemeStatusBar /> 
+        
+        <Stack
+          screenOptions={{
+            headerShown: false, // Приховуємо заголовок за замовчуванням
           }}
-        />
-      </Stack>
+        >
+          {/* Екран 'setup' повинен бути доступний поза групою вкладок */}
+          <Stack.Screen
+            name="setup"
+            options={{ animation: "slide_from_bottom" }}
+          />
+
+          {/* Група '(tabs)' містить основну навігацію (Home, Stats, Settings) */}
+          <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
+
+          {/* Спеціальні модальні екрани */}
+          <Stack.Screen
+            name="premium-modal"
+            options={{
+              title: "Отримати Premium",
+              // Ця опція примусово використовує модальний стиль презентації для iOS
+              presentation: Platform.OS === 'ios' ? 'modal' : 'card', 
+              headerShown: false, // Приховуємо header для модального вікна
+              gestureEnabled: true, // Дозволяємо жести закриття на iOS
+            }}
+          />
+        </Stack>
     </ThemeProvider>
   );
 };

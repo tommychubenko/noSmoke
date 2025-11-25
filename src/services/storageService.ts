@@ -3,9 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // --- INTERFACES ---
 
 import { DEFAULT_THEME, ThemeName } from "../constants/Colors";
-import { Alert } from "react-native";
-import { router } from "expo-router";
-import { ROUTES } from "../constants/Routes";
+// ВИДАЛЕНО: Alert, router, ROUTES не повинні бути в storageService.
 
 /**
  * Defines the structure for user setup data. This data determines
@@ -52,7 +50,7 @@ const STORAGE_KEYS = {
 };
 
 /**
- * Array of all storage keys to be cleared during a data reset. (ДОДАНО)
+ * Array of all storage keys to be cleared during a data reset.
  */
 const ALL_STORAGE_KEYS = Object.values(STORAGE_KEYS);
 
@@ -78,14 +76,12 @@ const setItem = async (key: string, value: string) => {
 
 /**
  * Wipes all application data from AsyncStorage.
- * FIX: Uses multiRemove for targeted and more reliable key deletion. (ОНОВЛЕНО)
  */
 export const clearAllData = async (): Promise<void> => {
   try {
-    await AsyncStorage.multiRemove(ALL_STORAGE_KEYS); // ВИКОРИСТОВУЄМО multiRemove
+    await AsyncStorage.multiRemove(ALL_STORAGE_KEYS);
     console.log("Успішно очищено всі призначені для користувача дані.");
   } catch (e) {
-    // Логуємо помилку, але дозволяємо процесу тривати, оскільки ключові дані видалено.
     console.error("Error clearing all data:", e);
   }
 };
@@ -118,6 +114,49 @@ export const saveSetupData = async (data: SetupData): Promise<void> => {
   } catch (e) {
     console.error("Error saving setup data:", e);
   }
+};
+
+/**
+ * !!! НОВА ФУНКЦІЯ !!!
+ * Додає слухача, який імітує відстеження змін для SetupData,
+ * використовуючи інтервал для періодичної перевірки AsyncStorage.
+ * @param callback Функція, яка викликається при зміні даних.
+ * @returns Функція для скасування підписки (clear the interval).
+ */
+export const onSetupDataChange = (
+  callback: (data: SetupData | null) => void
+): (() => void) => {
+  let lastData: SetupData | null = null;
+  const INTERVAL_MS = 5000; // Перевірка кожні 5 секунд
+
+  const checkData = async () => {
+    try {
+        const newData = await getSetupData();
+
+        // Порівняння JSON-рядків для виявлення змін
+        const isChanged = JSON.stringify(lastData) !== JSON.stringify(newData);
+        
+        // Викликаємо callback лише якщо дані змінилися або це перший запуск
+        if (isChanged) {
+          lastData = newData;
+          callback(newData);
+        }
+    } catch (e) {
+        console.error("Error checking setup data for change:", e);
+        // Можливо, варто викликати callback(null) у випадку помилки.
+    }
+  };
+
+  // Викликаємо одразу при підписці
+  checkData();
+
+  // Встановлюємо інтервал для періодичної перевірки
+  const intervalId = setInterval(checkData, INTERVAL_MS); 
+
+  // Функція для скасування підписки
+  return () => {
+    clearInterval(intervalId);
+  };
 };
 
 // --- APP SETTINGS FUNCTIONS ---
@@ -155,7 +194,6 @@ export const saveAppSettings = async (settings: AppSettings): Promise<void> => {
 
 /**
  * Logs a new cigarette entry.
- * NOTE: This implementation is basic and should be optimized in a production app.
  * @param entry The log entry to save.
  */
 export const addSmokingLog = async (entry: SmokingLogEntry): Promise<void> => {
@@ -183,21 +221,4 @@ export const getSmokingLogs = async (): Promise<SmokingLogEntry[]> => {
   return [];
 };
 
-export     const handleResetData = () => {
-        Alert.alert(
-            "Скинути Всі Дані",
-            "Ви впевнені, що хочете скинути всі ваші дані? Цю дію не можна скасувати.",
-            [
-                { text: "Скасувати", style: "cancel" },
-                { 
-                    text: "Скинути", 
-                    style: "destructive", 
-                    onPress: async () => {
-                        await clearAllData();
-                        router.replace(ROUTES.SETUP); 
-                    } 
-                },
-            ],
-            { cancelable: true }
-        );
-    };
+// ВИДАЛЕНО: Зайвий код handleResetData. Ця логіка повинна бути в settings.tsx
