@@ -1,10 +1,11 @@
-import React, { useMemo, useCallback } from 'react'; // <-- Додано useCallback
+import React, { useMemo, useCallback } from 'react';
 import { ActivityIndicator, Dimensions, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ThemedButton from '../../src/components/ThemedButton';
 import { useTheme } from '../../src/hooks/useTheme';
-import { useTimerLogic } from '../../src/hooks/useTimerLogic';
+// Зверніть увагу: використовуємо useTimerLogic для отримання цільової кількості
+import { useTimerLogic } from '../../src/hooks/useTimerLogic'; 
 import { ROUTES } from '@/src/constants/Routes';
-import { router, useFocusEffect } from 'expo-router'; // <-- Додано useFocusEffect
+import { router, useFocusEffect } from 'expo-router';
 import { SmokingLogEntry } from '@/src/services/storageService';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
@@ -13,16 +14,15 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 40;
 
 const ADMOB_BANNER_ID = __DEV__ 
-    ? TestIds.BANNER // 1. Використовуємо тестовий ID в режимі розробки
-    : Platform.select({ // 2. Вибираємо ID для релізу
-        ios: 'ca-app-pub-6658861467026382~3148246399', // Реальний ID для iOS
-        android: 'ca-app-pub-6658861467026382~6565581373', // Реальний ID для Android
-        default: TestIds.BANNER, // Запасний варіант (хоча тут не потрібен, але для чистоти)
+    ? TestIds.BANNER 
+    : Platform.select({ 
+        ios: 'ca-app-pub-6658861467026382~3148246399', 
+        android: 'ca-app-pub-6658861467026382~6565581373', 
+        default: TestIds.BANNER, 
     });
 
 
-// --- UTILITY FUNCTIONS ---
-// ... (Your utility functions for getTodayLogs, calculateAverageInterval, formatTime)
+// --- UTILITY FUNCTIONS (Без змін) ---
 
 const getTodayLogs = (logs: SmokingLogEntry[]): SmokingLogEntry[] => {
     const today = new Date();
@@ -67,22 +67,21 @@ const StatsScreen = () => {
         setupData,
         isLoading,
         smokingLogs,
-        formatRemainingTime, // Not used in stats, but let's keep it here for completeness
-        refreshData, // <-- Отримали нову функцію оновлення
-    } = useTimerLogic();
+        refreshData,
+        // 🎯 ГОЛОВНА ЗМІНА: Отримуємо цільову кількість сигарет на сьогодні
+        targetCigarettesPerDay, 
+    } = useTimerLogic(); // useTimerLogic тепер повертає всі потрібні дані
 
     const scrollPaddingBottom = isUserPremium ? 40 : 90;
 
-    // === НОВЕ ВИПРАВЛЕННЯ: Динамічне оновлення даних ===
+    // Динамічне оновлення даних при фокусуванні на вкладці
     useFocusEffect(
         useCallback(() => {
-            // Примусово завантажуємо найновіші дані щоразу, коли вкладка отримує фокус
             if (refreshData) {
                 refreshData();
             }
         }, [refreshData])
     );
-    // ===============================================
 
     // --- Memoized Calculations ---
     const todayLogs = useMemo(() => getTodayLogs(smokingLogs), [smokingLogs]);
@@ -106,7 +105,6 @@ const StatsScreen = () => {
                 <ScrollView
                     contentContainerStyle={[
                         styles.scrollContent,
-                        // ЗАСТОСУВАННЯ ДИНАМІЧНОГО ВІДСТУПУ
                         { paddingBottom: scrollPaddingBottom }
                     ]}
                     showsVerticalScrollIndicator={false}
@@ -123,7 +121,6 @@ const StatsScreen = () => {
                         />
                     </View>
                 </ScrollView>
-
             </SafeAreaView>
         );
     }
@@ -153,7 +150,6 @@ const StatsScreen = () => {
             <ScrollView
                 contentContainerStyle={[
                     styles.scrollContent,
-                    // Застосовуємо динамічний відступ
                     { paddingBottom: scrollPaddingBottom }
                 ]}
                 showsVerticalScrollIndicator={false}
@@ -166,24 +162,15 @@ const StatsScreen = () => {
                     <StatsCard
                         title="Сьогодні"
                         value={String(todayCount)}
-                        unit={`з ${setupData.cigarettesPerDay} запланованих`}
+                        // ✅ ВИПРАВЛЕНО: Використовуємо targetCigarettesPerDay замість початкової кількості
+                        unit={`з ${targetCigarettesPerDay} запланованих`}
                     />
                     <StatsCard
                         title="Середній Інтервал"
                         value={formatTime(averageInterval)}
                         unit="між сьогоднішніми"
                     />
-                    {/* <StatsCard 
-                        title="Всього" 
-                        value={String(totalCigarettes)} 
-                        unit="записів" 
-                    />
-                    <StatsCard 
-                        title="Зекономлено (П)" 
-                        value="~0₴" 
-                        unit="завдяки зменшенню" 
-                        isPremium 
-                    />   */}
+                    {/* ... (інші картки закоментовані) */}
                 </View>
 
                 {/* Premium Teaser */}
@@ -239,7 +226,7 @@ const StatsScreen = () => {
     );
 };
 
-// --- STYLES (unchanged) ---
+// --- STYLES (без змін) ---
 
 const styles = StyleSheet.create({
     container: {
@@ -247,8 +234,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: 20,
-        // *** ВИДАЛИТИ РЯДОК З ФІКСОВАНИМ paddingBottom! ***
-        // paddingBottom: Platform.OS === 'android' ? 100 : 40, 
         paddingTop: 20,
     },
     header: {
@@ -358,7 +343,6 @@ const styles = StyleSheet.create({
         bottom: 0,
         width: '100%',
         alignItems: 'center',
-        // ВАЖЛИВО: Залишаємо 0, оскільки ми вже використовуємо SafeAreaView
         paddingBottom: Platform.OS === 'ios' ? 0 : 0,
     },
 });

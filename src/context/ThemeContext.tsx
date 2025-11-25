@@ -1,6 +1,6 @@
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { ColorSet, DEFAULT_THEME, ThemeName } from '../constants/Colors';
-import * as storageService from '../services/storageService'; 
+import * as storageService from '../services/storageService';
 import { AppTheme, getThemeByName } from '../constants/Themes';
 
 // --- INTERFACES ---
@@ -31,11 +31,11 @@ const initialTheme = getThemeByName(DEFAULT_THEME);
 // Default context value before any state is set
 const defaultContextValue: ThemeContextData = {
   currentTheme: initialTheme,
-  setAppTheme: () => {}, // Placeholder function
+  setAppTheme: () => { }, // Placeholder function
   colors: initialTheme.colors,
   currentThemeName: DEFAULT_THEME,
   isUserPremium: false, // ДОДАНО
-  setUserPremiumStatus: async () => {}, // ДОДАНО
+  setUserPremiumStatus: async () => { }, // ДОДАНО
 };
 
 // --- CONTEXT CREATION ---
@@ -51,20 +51,20 @@ interface ThemeProviderProps {
   initialIsPremium: boolean; // ДОДАНО
 }
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ 
-    children, 
-    initialThemeName, 
-    initialIsPremium // ВИКОРИСТАННЯ
+export const ThemeProvider: React.FC<ThemeProviderProps> = ({
+  children,
+  initialThemeName,
+  initialIsPremium // ВИКОРИСТАННЯ
 }) => {
   // State to hold the theme name.
   const [themeName, setThemeName] = useState<ThemeName>(initialThemeName);
-  
+
   // State to hold the full theme object, derived from themeName.
   const [currentTheme, setCurrentTheme] = useState<AppTheme>(() => getThemeByName(initialThemeName));
 
   // State to track premium status.
   const [isUserPremium, setIsUserPremium] = useState(initialIsPremium); // ДОДАНО
-  
+
   // Effect to handle external changes to initialThemeName/initialIsPremium
   useEffect(() => {
     // Sync state if props change (useful during initial load in RootLayout)
@@ -85,14 +85,14 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
     // 2. Save to Storage 
     try {
-        const appSettings = await storageService.getAppSettings();
-        // Зберігаємо нову тему, зберігаючи поточний статус Premium
-        await storageService.saveAppSettings({ ...appSettings, themeName: newTheme.name });
+      const appSettings = await storageService.getAppSettings();
+      // Зберігаємо нову тему, зберігаючи поточний статус Premium
+      await storageService.saveAppSettings({ ...appSettings, themeName: newTheme.name });
     } catch (e) {
-        console.error("Error saving theme setting:", e);
+      console.error("Error saving theme setting:", e);
     }
   }, []);
-  
+
   // Function to set Premium status and save it to storage.
   const setUserPremiumStatus = useCallback(async (isPremium: boolean) => {
     // 1. Update React State
@@ -100,11 +100,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
     // 2. Save to Storage
     try {
-        const appSettings = await storageService.getAppSettings();
-        // Зберігаємо новий статус Premium, зберігаючи поточну тему
-        await storageService.saveAppSettings({ ...appSettings, isPremium: isPremium });
+      const appSettings = await storageService.getAppSettings();
+      // Зберігаємо новий статус Premium, зберігаючи поточну тему
+      await storageService.saveAppSettings({ ...appSettings, isPremium: isPremium });
     } catch (e) {
-        console.error("Error saving premium status:", e);
+      console.error("Error saving premium status:", e);
     }
   }, []); // ДОДАНО
 

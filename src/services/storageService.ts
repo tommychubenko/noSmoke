@@ -3,6 +3,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // --- INTERFACES ---
 
 import { DEFAULT_THEME, ThemeName } from "../constants/Colors";
+import { Alert } from "react-native";
+import { router } from "expo-router";
+import { ROUTES } from "../constants/Routes";
 
 /**
  * Defines the structure for user setup data. This data determines
@@ -179,3 +182,22 @@ export const getSmokingLogs = async (): Promise<SmokingLogEntry[]> => {
   }
   return [];
 };
+
+export     const handleResetData = () => {
+        Alert.alert(
+            "Скинути Всі Дані",
+            "Ви впевнені, що хочете скинути всі ваші дані? Цю дію не можна скасувати.",
+            [
+                { text: "Скасувати", style: "cancel" },
+                { 
+                    text: "Скинути", 
+                    style: "destructive", 
+                    onPress: async () => {
+                        await clearAllData();
+                        router.replace(ROUTES.SETUP); 
+                    } 
+                },
+            ],
+            { cancelable: true }
+        );
+    };

@@ -10,8 +10,11 @@ import { ROUTES } from '@/src/constants/Routes';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Foundation } from '@expo/vector-icons';
 import { BannerAd, BannerAdSize, TestIds, RewardedAd } from 'react-native-google-mobile-ads'; // <-- ДОДАНО
+import { AppColors } from '@/src/constants/Colors';
+import { handleResetData } from '@/src/services/storageService';
+import ResetDataButton from '@/src/components/ResetDataButton';
 
-const ADMOB_BANNER_ID = __DEV__ 
+const ADMOB_BANNER_ID = __DEV__
     ? TestIds.BANNER // 1. Використовуємо тестовий ID в режимі розробки
     : Platform.select({ // 2. Вибираємо ID для релізу
         ios: 'ca-app-pub-6658861467026382~3148246399', // Реальний ID для iOS
@@ -115,7 +118,8 @@ const HomeScreen = () => {
         isPaused,
         recordCigarette,
         formatRemainingTime,
-        intervalDuration
+        intervalDuration,
+        targetCigarettesPerDay
     } = useTimerLogic();
 
     // Calculate time remaining in MM:SS format
@@ -234,6 +238,14 @@ const HomeScreen = () => {
                     </View>
 
                     {/* Info Text */}
+                    {
+                        targetCigarettesPerDay === 0 && (
+                            <ResetDataButton/>
+                        )
+                    }
+
+
+
                     <Text style={[styles.infoText, { color: colors.textSecondary }]}>
                         Your current target interval is {targetTimeText}.
                     </Text>
@@ -369,7 +381,11 @@ const styles = StyleSheet.create({
     secondaryButton: {
         paddingVertical: 10,
         paddingHorizontal: 15,
-    }
+    },
+    resetButton: {
+        minWidth: '100%',
+        marginTop: 10,
+    },
 });
 
 export default HomeScreen;

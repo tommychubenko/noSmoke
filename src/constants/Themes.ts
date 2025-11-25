@@ -13,7 +13,7 @@ export interface AppTheme {
   /** Whether this theme requires Premium status. */
   isPremium: boolean;
   /** НОВЕ: Чи є ця тема темною палітрою. */
-  isDark: boolean; 
+  isDark: boolean;
   /** The ColorSet object imported from Colors.ts. */
   colors: ColorSet;
 }

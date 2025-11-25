@@ -80,19 +80,26 @@ const calculatePlanMetrics = (setup: SetupData): { intervalDuration: number; tar
 
     const daysPassed = getDaysPassed(startDate);
     
-    // 🟢 ФІКС: Приведення типу (type assertion) для 'planType'
     const targetDays = TARGET_DAYS[planType as keyof typeof TARGET_DAYS] || TARGET_DAYS.balanced;
     
-    const reductionPerDay = Math.ceil(cigarettesPerDay / targetDays);
-    const reductionAmount = reductionPerDay * daysPassed;
+    // 🔴 ПОМИЛКА була тут: const reductionPerDay = Math.ceil(cigarettesPerDay / targetDays);
+    
+    // 🟢 ВИПРАВЛЕННЯ ПОМИЛКИ: Розраховуємо загальну накопичену суму зменшення, 
+    // а потім округлюємо її, щоб зберегти плавне зменшення протягом усього плану.
+    const dailyReductionRate = cigarettesPerDay / targetDays;
+    
+    // Розраховуємо загальне зменшення та округлюємо до найближчого цілого.
+    const reductionAmount = Math.round(dailyReductionRate * daysPassed); 
     
     let newTargetCPD = cigarettesPerDay - reductionAmount;
     
-    if (newTargetCPD <= 0) newTargetCPD = 1; 
-    
-    if (daysPassed >= targetDays) newTargetCPD = 0; 
-    
-    const finalTargetCPD = Math.max(0, newTargetCPD);
+    if (daysPassed >= targetDays) {
+        newTargetCPD = 0;
+    } else {
+        // Гарантуємо, що ціль не опуститься нижче 1 сигарети, поки план не закінчиться.
+        newTargetCPD = Math.max(1, newTargetCPD); 
+    }
+    const finalTargetCPD = newTargetCPD;
 
     let derivedInterval;
     if (finalTargetCPD === 0) {

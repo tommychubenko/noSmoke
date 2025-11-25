@@ -44,7 +44,7 @@ const SetupScreen = () => {
   // --- 1. СТАН ДАНИХ ДЛЯ ФОРМИ ---
   const [activeStartTime, setActiveStartTime] = useState('08:00');
   const [activeEndTime, setActiveEndTime] = useState('23:00');
-  const [cigarettesPerDay, setCigarettesPerDay] = useState(1200);
+  const [cigarettesPerDay, setCigarettesPerDay] = useState(20);
   const [planType, setPlanType] = useState<'slow' | 'balanced' | 'aggressive'>('balanced');
   
   // ✅ ДОДАНО СТАНОВІ ЗМІННІ ДЛЯ ФІНАНСІВ:
@@ -85,26 +85,39 @@ const SetupScreen = () => {
     }
 
     setIsSaving(true);
+const startDateObject = new Date();
+// Just for testing - normally should be 0
+const testDaysAgo = 30
+// --------------------
+startDateObject.setDate(startDateObject.getDate() - testDaysAgo);
+
+
+    const startDateISO = startDateObject.toISOString();; // Створюємо змінну для логування
+    console.log("  New Date ISO String:", startDateISO);
+    
     
     const setupData: SetupData = {
       activeStartTime,
       activeEndTime,
       cigarettesPerDay,
       planType,
-      startDate: new Date().toISOString(),
+      startDate: startDateISO,
       // ✅ ЗБЕРІГАЄМО НОВІ ФІНАНСОВІ ДАНІ
       packPrice, 
       cigarettesPerPack,
+      
     };
     
     try {
-        await saveSetupData(setupData);
+        await saveSetupData(setupData)
+        
         goToApp();
     } catch (error) {
         Alert.alert("Помилка", "Не вдалося зберегти налаштування. Спробуйте ще раз.");
         console.error("Setup save error:", error);
     } finally {
         setIsSaving(false);
+        
     }
   };
 

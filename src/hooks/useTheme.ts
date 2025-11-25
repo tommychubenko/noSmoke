@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { ColorSet, ThemeName } from '../constants/Colors';
-import { AppTheme } from '../constants/Themes'; 
+import { AppTheme } from '../constants/Themes';
 import { ThemeContext } from '../context/ThemeContext';
 
 
@@ -17,11 +17,11 @@ interface UseThemeResult {
   /** Function to set a new theme by its name. */
   setAppTheme: (themeName: ThemeName) => void;
   /** The full current theme object (includes colors, displayName, isPremium). */
-  currentTheme: AppTheme; 
+  currentTheme: AppTheme;
   /** True if the user has an active Premium subscription. (ДОДАНО) */
-  isUserPremium: boolean; 
+  isUserPremium: boolean;
   /** Function to manually set the Premium status. (ДОДАНО) */
-  setUserPremiumStatus: (isPremium: boolean) => Promise<void>; 
+  setUserPremiumStatus: (isPremium: boolean) => Promise<void>;
 }
 
 // --- HOOK IMPLEMENTATION ---
@@ -40,19 +40,19 @@ export const useTheme = (): UseThemeResult => {
   }
 
   // Деструктуризація для отримання всіх значень, включаючи нові
-  const { 
-    colors, 
-    currentThemeName, 
-    setAppTheme, 
+  const {
+    colors,
+    currentThemeName,
+    setAppTheme,
     currentTheme,
     isUserPremium, // ДОДАНО
     setUserPremiumStatus // ДОДАНО
   } = context;
 
-  return { 
-    colors, 
-    currentThemeName, 
-    setAppTheme, 
+  return {
+    colors,
+    currentThemeName,
+    setAppTheme,
     currentTheme,
     isUserPremium, // ДОДАНО
     setUserPremiumStatus // ДОДАНО

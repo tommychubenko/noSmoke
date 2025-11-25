@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import * as Linking from 'expo-linking';
 import { useFocusEffect } from '@react-navigation/native';
+import ResetDataButton from '@/src/components/ResetDataButton';
 
 // --- ДОПОМІЖНІ КОМПОНЕНТИ ---
 
@@ -251,24 +252,24 @@ const SettingsScreen = () => {
     /**
      * Prompts the user to confirm data reset.
      */
-    const handleResetData = () => {
-        Alert.alert(
-            "Скинути Всі Дані",
-            "Ви впевнені, що хочете скинути всі ваші дані? Цю дію не можна скасувати.",
-            [
-                { text: "Скасувати", style: "cancel" },
-                { 
-                    text: "Скинути", 
-                    style: "destructive", 
-                    onPress: async () => {
-                        await storageService.clearAllData();
-                        router.replace(ROUTES.SETUP); 
-                    } 
-                },
-            ],
-            { cancelable: true }
-        );
-    };
+    // const handleResetData = () => {
+    //     Alert.alert(
+    //         "Скинути Всі Дані",
+    //         "Ви впевнені, що хочете скинути всі ваші дані? Цю дію не можна скасувати.",
+    //         [
+    //             { text: "Скасувати", style: "cancel" },
+    //             { 
+    //                 text: "Скинути", 
+    //                 style: "destructive", 
+    //                 onPress: async () => {
+    //                     await storageService.clearAllData();
+    //                     router.replace(ROUTES.SETUP); 
+    //                 } 
+    //             },
+    //         ],
+    //         { cancelable: true }
+    //     );
+    // };
 
     // --- RENDER LOGIC ---
     const isCurrentThemeDark = currentTheme.isDark; 
@@ -385,13 +386,7 @@ const SettingsScreen = () => {
                     <Text style={[styles.resetDescription, { color: colors.textSecondary }]}>
                         Ця дія видалить всю вашу історію та налаштування, і ви почнете все спочатку.
                     </Text>
-                    <ThemedButton 
-                        title="Скинути Всі Дані"
-                        onPress={handleResetData}
-                        useSecondaryColor={true}
-                        containerStyle={[styles.resetButton, { backgroundColor: AppColors.DefaultColors.error }]}
-                        textStyle={{ color: AppColors.DefaultColors.white }}
-                    />
+                    <ResetDataButton/>
                 </View>
 
 
