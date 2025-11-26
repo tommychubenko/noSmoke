@@ -87,7 +87,7 @@ const SetupScreen = () => {
     setIsSaving(true);
 const startDateObject = new Date();
 // Just for testing - normally should be 0
-const testDaysAgo = 30
+const testDaysAgo = 0
 // --------------------
 startDateObject.setDate(startDateObject.getDate() - testDaysAgo);
 

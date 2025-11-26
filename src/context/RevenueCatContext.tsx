@@ -3,44 +3,35 @@ import Purchases, {
     LOG_LEVEL,
     PurchasesPackage,
     CustomerInfo, 
-    PurchasesOffering,
+    PurchasesOfferings, // 🟢 ВИПРАВЛЕНО: Коректний тип для Offerings
     PURCHASES_ERROR_CODE,
     PurchasesError 
 } from 'react-native-purchases';
 import { Platform, Alert } from 'react-native';
 
-// Імпортуємо функцію для оновлення Premium-статусу в ThemeContext
 import { useTheme } from '../hooks/useTheme'; 
 
-// --- КОНСТАНТИ ---
+// --- КОНСТАНТИ ---\
 // ⚠️ ЗАМІНІТЬ ЦЕЙ КЛЮЧ НА ВАШ ПРОДАКШН-КЛЮЧ ПЕРЕД РЕЛІЗОМ
 const REVENUECAT_API_KEY = 'test_fsxTUrPVJaBBwQNyJMhQgafpwRt'; 
 // Ідентифікатор права, яке надає Premium-доступ
-const PRO_ENTITLEMENT_ID = 'Enterpreneur dev Pro';
+const PRO_ENTITLEMENT_ID = 'tracker_premium_access';
 
-// --- ІНТЕРФЕЙСИ ---
+// --- ІНТЕРФЕЙСИ ---\
 
 interface RevenueCatContextData {
-    /** True, якщо SDK ініціалізовано та дані завантажено */
     isRcReady: boolean;
-    /** Поточний активний список пропозицій (підписки, покупки) */
-    offerings: PurchasesOffering | null;
-    /** Інформація про покупця (права, активні підписки) */
+    offerings: PurchasesOfferings | null; 
     customerInfo: CustomerInfo | null;
-    /** Поточний стан завантаження/покупки */
     isLoading: boolean;
-    /** Функція для здійснення покупки (використовується в PremiumModal) */
-    handlePurchase: (pkg: PurchasesPackage) => Promise<boolean>;
-    /** Функція для відновлення покупок */
-    restorePurchases: () => Promise<void>;
-    /** URL для Customer Center (завжди null, оскільки функція видалена) */
-    customerCenterUrl: string | null;
+    handlePurchase: (pkg: PurchasesPackage) => Promise<boolean>; // 🟢 ВИПРАВЛЕНО: Повертає Promise<boolean>
+    restorePurchases: () => Promise<boolean>; // 🟢 ВИПРАВЛЕНО: Повертає Promise<boolean>
 }
 
-// --- СТВОРЕННЯ КОНТЕКСТУ ---
 const RevenueCatContext = createContext<RevenueCatContextData | undefined>(undefined);
 
-// --- ХУК ДЛЯ ВИКОРИСТАННЯ КОНТЕКСТУ ---
+// --- HOOK ---\
+
 export const useRevenueCat = () => {
     const context = useContext(RevenueCatContext);
     if (context === undefined) {
@@ -49,120 +40,120 @@ export const useRevenueCat = () => {
     return context;
 };
 
-// --- КОМПОНЕНТ ПРОВАЙДЕРА ---
-export const RevenueCatProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+// --- PROVIDER ---\
+
+export interface RevenueCatProviderProps {
+    children: ReactNode;
+}
+
+export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children }) => {
+    // setUserPremiumStatus беремо з ThemeContext
     const { setUserPremiumStatus } = useTheme(); 
+
     const [isRcReady, setIsRcReady] = useState(false);
-    const [offerings, setOfferings] = useState<PurchasesOffering | null>(null); 
+    const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null); 
     const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [customerCenterUrl] = useState<string | null>(null); // Залишаємо null
 
-    /**
-     * Перевіряє права користувача та оновлює статус Premium у ThemeContext.
-     */
-    const checkEntitlements = useCallback((info: CustomerInfo) => {
-        // 1. Перевірка наявності активного права "Enterpreneur dev Pro"
-        const isPro = info.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined;
-        
-        // 2. Оновлення статусу Premium у ThemeContext
-        setUserPremiumStatus(isPro); 
+    // --- ЛОГІКА ПЕРЕВІРКИ ПРАВ ---\
 
-        return isPro;
+    const checkEntitlements = useCallback((info: CustomerInfo): boolean => {
+        const isPremium = info.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined;
+        // Оновлюємо статус у ThemeContext
+        setUserPremiumStatus(isPremium); 
+        return isPremium; 
     }, [setUserPremiumStatus]);
 
-    /**
-     * Основна функція для завантаження даних про пропозиції та статус покупця.
-     */
+    // --- ЗВАНТАЖЕННЯ ДАНИХ (Offerings & CustomerInfo) ---\
+    
     const loadCustomerData = useCallback(async () => {
+        console.log("[RevenueCat] Loading customer data...");
         setIsLoading(true);
         try {
+            // Отримуємо info
             const info = await Purchases.getCustomerInfo();
             setCustomerInfo(info);
-            checkEntitlements(info);
+            checkEntitlements(info); 
             
+            // Отримуємо offerings
             const offerings = await Purchases.getOfferings();
-            if (offerings.current) {
-                setOfferings(offerings.current);
-            }
+            setOfferings(offerings); 
             
+            setIsRcReady(true);
+            console.log("[RevenueCat] SDK initialized and ready.");
         } catch (e) {
-            console.error("[RevenueCat] Error loading initial data:", e);
-            Alert.alert("Помилка підключення", "Не вдалося завантажити платіжні дані. Перевірте підключення до мережі.");
+            console.error("[RevenueCat] Initial load error:", e);
+            Alert.alert("Помилка", "Не вдалося завантажити дані підписок. Перевірте підключення.");
         } finally {
             setIsLoading(false);
-            setIsRcReady(true);
         }
     }, [checkEntitlements]);
 
-    /**
-     * Обробник для покупок.
-     * @param pkg Пакет (підписка/покупка), який потрібно придбати.
-     */
-    const handlePurchase = useCallback(async (pkg: PurchasesPackage): Promise<boolean> => {
-        if (isLoading) return false;
+
+    // --- ЛОГІКА ПОКУПКИ ---\
+
+    const handlePurchase = useCallback(async (pkg: PurchasesPackage): Promise<boolean> => { 
         setIsLoading(true);
-
         try {
-            const { customerInfo: newInfo } = await Purchases.purchasePackage(pkg);
+            console.log(`[RevenueCat] Attempting to purchase: ${pkg.identifier}`);
+            const { customerInfo } = await Purchases.purchasePackage(pkg);
             
-            const isPro = checkEntitlements(newInfo); 
-            
-            setCustomerInfo(newInfo);
-            
-            Alert.alert("Успіх!", isPro ? "Premium-доступ активовано!" : "Покупку успішно завершено.");
-            
-            return isPro;
+            const isEntitled = checkEntitlements(customerInfo); 
 
-        } catch (e) {
-            const rcError = e as PurchasesError;
-            
-            if (rcError.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-                Alert.alert("Скасовано", "Покупку скасовано користувачем.");
-            } else {
-                console.error("[RevenueCat] Purchase error:", rcError);
-                Alert.alert("Помилка покупки", `Сталася помилка: ${rcError.message}`);
+            if (isEntitled) {
+                Alert.alert("Успіх!", "Дякуємо за придбання Premium!");
             }
-            return false;
+            return isEntitled; 
+        } catch (e) {
+            const error = e as PurchasesError;
+            if (error.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+                console.log("[RevenueCat] Purchase cancelled by user.");
+            } else {
+                console.error("[RevenueCat] Purchase error:", e);
+                Alert.alert("Помилка покупки", "Не вдалося завершити покупку. Спробуйте пізніше.");
+            }
+            return false; 
         } finally {
             setIsLoading(false);
         }
-    }, [isLoading, checkEntitlements]);
-    
-    /**
-     * Відновлення покупок
-     */
-    const restorePurchases = useCallback(async () => {
+    }, [checkEntitlements]);
+
+    // --- ЛОГІКА ВІДНОВЛЕННЯ ---\
+
+    const restorePurchases = useCallback(async (): Promise<boolean> => { 
         setIsLoading(true);
         try {
-            const restoredInfo = await Purchases.restorePurchases();
-            const isPro = checkEntitlements(restoredInfo);
-
-            if (isPro) {
-                Alert.alert("Успіх!", "Ваші покупки успішно відновлено. Premium-доступ активовано.");
-            } else {
-                Alert.alert("Інформація", "Активні покупки для відновлення не знайдено.");
+            console.log("[RevenueCat] Restoring purchases...");
+            const customerInfo = await Purchases.restorePurchases();
+            
+            const isEntitled = checkEntitlements(customerInfo);
+            
+            // Якщо відновлення не знайшло активних прав
+            if (!isEntitled) {
+                Alert.alert("Інформація", "Не знайдено активних покупок для відновлення.");
             }
+            
+            return isEntitled; 
         } catch (e) {
             console.error("[RevenueCat] Restore purchases error:", e);
             Alert.alert("Помилка відновлення", "Не вдалося відновити покупки.");
+            return false; 
         } finally {
             setIsLoading(false);
         }
     }, [checkEntitlements]);
+
 
     // --- ІНІЦІАЛІЗАЦІЯ SDK ---
     useEffect(() => {
         Purchases.setLogLevel(LOG_LEVEL.DEBUG); 
         Purchases.configure({ apiKey: REVENUECAT_API_KEY });
         
-        // 🟢 ФІНАЛЬНЕ ВИПРАВЛЕННЯ: Подвійне твердження типу (void -> unknown -> () => void)
-        // Це обходить строгий контроль TypeScript над невідповідністю типів, коли
-        // 'void' використовується як повертаний тип для функції, яка насправді повертає функцію.
+        // 🟢 ФІКС: Подвійне твердження типу для обходу помилки TypeScript/RevenueCat
         const customerInfoListener = Purchases.addCustomerInfoUpdateListener((info) => {
             setCustomerInfo(info);
             checkEntitlements(info); 
-        }) as unknown as (() => void); // <-- ФІКС: Подвійне твердження типу
+        }) as unknown as (() => void); // Приведення типу до функції відписки
 
         loadCustomerData();
 
@@ -180,7 +171,6 @@ export const RevenueCatProvider: React.FC<{ children: ReactNode }> = ({ children
         isLoading,
         handlePurchase,
         restorePurchases,
-        customerCenterUrl,
     };
 
     return (
@@ -189,3 +179,5 @@ export const RevenueCatProvider: React.FC<{ children: ReactNode }> = ({ children
         </RevenueCatContext.Provider>
     );
 };
+
+export { PurchasesPackage };

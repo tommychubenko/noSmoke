@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "noSmoke",
-    "slug": "noSmoke",
-    "version": "1.0.1",
+    "name": "Smoke Victory",
+    "slug": "skoke_victory",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "nosmoke",
