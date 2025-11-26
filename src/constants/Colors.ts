@@ -39,7 +39,7 @@ export const DefaultColors = {
 
 // Усі доступні назви тем
 export type ThemeName = 'Theme1' | 'Theme2' | 'Theme3' | 'Theme4' | 'Theme5' | 'Theme6';
-export const DEFAULT_THEME: ThemeName = 'Theme6'; // Темна тема за замовчуванням
+export const DEFAULT_THEME: ThemeName = 'Theme3'; // Темна тема за замовчуванням
 
 // --- APP COLORS ---
 

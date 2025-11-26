@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../src/hooks/useTheme';
-import MobileAds  from 'react-native-google-mobile-ads';
+import MobileAds from 'react-native-google-mobile-ads';
 
 
 /**
@@ -21,79 +21,79 @@ const TabsLayout = () => {
 
   return (
     <>
-    <Tabs
-      screenOptions={{
-        headerShown: false, // Приховуємо заголовок на всіх екранах вкладок
-        tabBarActiveTintColor: colors.accentPrimary, // Активний колір вкладки
-        tabBarInactiveTintColor: colors.textSecondary, // Неактивний колір вкладки
-        tabBarStyle: {
-          backgroundColor: colors.backgroundSecondary, // Колір фону панелі
-          borderTopColor: colors.separator, // Колір розділювача
-          height: 90, 
-          paddingTop: 10,
-          paddingBottom: 25, 
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
-      }}
-    >
-      {/* 1. Вкладка: Головна (Таймер) -> посилається на app/index.tsx */}
-      <Tabs.Screen
-        name="index" 
-        options={{
-          title: 'Головна',
-           // @ts-ignore: unmountOnBlur потрібен для підтримки активності таймера при переході на інші вкладки,
-          // але відсутній у типі TabsProps.
-          unmountOnBlur: false,
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="timer-sand" size={size} color={color} />
-          ),
+      <Tabs
+        screenOptions={{
+          headerShown: false, // Приховуємо заголовок на всіх екранах вкладок
+          tabBarActiveTintColor: colors.accentPrimary, // Активний колір вкладки
+          tabBarInactiveTintColor: colors.textSecondary, // Неактивний колір вкладки
+          tabBarStyle: {
+            backgroundColor: colors.backgroundSecondary, // Колір фону панелі
+            borderTopColor: colors.separator, // Колір розділювача
+            height: 90,
+            paddingTop: 10,
+            paddingBottom: 25,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '600',
+          },
         }}
-      />
+      >
+        {/* 1. Вкладка: Головна (Таймер) -> посилається на app/index.tsx */}
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Main',
+            // @ts-ignore: unmountOnBlur потрібен для підтримки активності таймера при переході на інші вкладки,
+            // але відсутній у типі TabsProps.
+            unmountOnBlur: false,
+            tabBarIcon: ({ color, size }) => (
+              <MaterialCommunityIcons name="timer-sand" size={size} color={color} />
+            ),
+          }}
+        />
 
-      {/* 2. Вкладка: Статистика -> посилається на app/stats.tsx */}
-      <Tabs.Screen
-        name="stats" 
-        options={{
-          title: 'Статистика',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="chart-bar" size={size} color={color} />
-          ),
-        }}
-      />
+        {/* 2. Вкладка: Статистика -> посилається на app/stats.tsx */}
+        <Tabs.Screen
+          name="stats"
+          options={{
+            title: 'Stats',
+            tabBarIcon: ({ color, size }) => (
+              <MaterialCommunityIcons name="chart-bar" size={size} color={color} />
+            ),
+          }}
+        />
 
-      {/* 3. Вкладка: Налаштування -> посилається на app/settings.tsx */}
-      <Tabs.Screen
-        name="settings" 
-        options={{
-          title: 'Налаштування',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="cog" size={size} color={color} />
-          ),
-        }}
-      />
-      
-      {/* ДОДАТКОВЕ ВИПРАВЛЕННЯ: 
+        {/* 3. Вкладка: Налаштування -> посилається на app/settings.tsx */}
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+            tabBarIcon: ({ color, size }) => (
+              <MaterialCommunityIcons name="cog" size={size} color={color} />
+            ),
+          }}
+        />
+
+        {/* ДОДАТКОВЕ ВИПРАВЛЕННЯ: 
         Потрібно приховати екран налаштувань (setup), оскільки він є 
         частиною кореневої навігації, але не має відображатися у вкладках.
       */}
-      {/* <Tabs.Screen 
+        {/* <Tabs.Screen 
         name="setup" 
         options={{ 
           href: null, // Приховати з нижньої панелі 
           title: 'Налаштування' // Для коректності, якщо його викликано окремо
         }} 
       /> */}
-    </Tabs>
-    {/* <BannerAd unitId={TestIds.BANNER}
+      </Tabs>
+      {/* <BannerAd unitId={TestIds.BANNER}
     size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
     requestOptions={{requestNonPersonalizedAdsOnly: true, networkExtras: {collapsible: "bottom"}}}
     />  */}
 
     </>
-    
+
   );
 };
 

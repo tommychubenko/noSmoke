@@ -1,17 +1,16 @@
-import { AppColors, ThemeName, DEFAULT_THEME } from "@/src/constants/Colors"; 
+import { AppColors, ThemeName, DEFAULT_THEME } from "@/src/constants/Colors";
 import { ROUTES } from "@/src/constants/Routes";
 import * as storageService from "@/src/services/storageService";
-import { SetupData } from "@/src/services/storageService";
-import { Stack, router, usePathname } from "expo-router"; 
+import { Stack, router, } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Text, View, StyleSheet } from "react-native";
 import { ThemeProvider } from "../src/context/ThemeContext";
 import { RevenueCatProvider } from "../src/context/RevenueCatContext"; // 🟢 ІМПОРТ REVENUECAT
 import { StatusBar } from "expo-status-bar";
 import { useTheme } from "@/src/hooks/useTheme";
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+
 import { Tabs } from 'expo-router';
-import { AppTheme, getThemeByName } from "@/src/constants/Themes"; 
+
 
 
 // --- ІНТЕРФЕЙСИ ТА СТРУКТУРИ ---
@@ -30,28 +29,28 @@ interface InitializationResult {
  * Must be rendered inside ThemeProvider.
  */
 const ThemeStatusBar: React.FC = () => {
-    const { currentTheme } = useTheme();
+  const { currentTheme } = useTheme();
 
-    const isDark = currentTheme.isDark;
-    
-    // Визначаємо стиль статус-бару: 'light' для темних тем, 'dark' для світлих
-    return (
-        <StatusBar 
-            style={isDark ? 'light' : 'dark'} 
-            backgroundColor={currentTheme.colors.backgroundPrimary}
-        />
-    );
+  const isDark = currentTheme.isDark;
+
+  // Визначаємо стиль статус-бару: 'light' для темних тем, 'dark' для світлих
+  return (
+    <StatusBar
+      style={isDark ? 'light' : 'dark'}
+      backgroundColor={currentTheme.colors.backgroundPrimary}
+    />
+  );
 };
 
 // Компонент-заглушка для відображення під час завантаження
 const LoadingScreen: React.FC = () => {
-    const { colors } = useTheme();
-    return (
-        <View style={[styles.loadingContainer, { backgroundColor: colors.backgroundPrimary }]}>
-            <ActivityIndicator size="large" color={colors.accentPrimary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary, marginTop: 10 }]}>Завантаження...</Text>
-        </View>
-    );
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.loadingContainer, { backgroundColor: colors.backgroundPrimary }]}>
+      <ActivityIndicator size="large" color={colors.accentPrimary} />
+      <Text style={[styles.loadingText, { color: colors.textSecondary, marginTop: 10 }]}>Завантаження...</Text>
+    </View>
+  );
 };
 
 
@@ -102,16 +101,16 @@ const useSetupInitialization = () => {
 
   // 2. ЛОГІКА НАВІГАЦІЇ (Виконується лише після завершення завантаження)
   useEffect(() => {
-      // 🟢 ВИПРАВЛЕННЯ: Навігація відбувається, коли isLoading = false
-      if (!isLoading && initialization.isLoaded) {
-          if (!initialization.hasSetupData) {
-              console.log("Navigating to setup...");
-              router.replace(ROUTES.SETUP);
-          } else {
-              console.log("Navigating to tabs...");
-              router.replace(ROUTES.TABS_GROUP);
-          }
+    // 🟢 ВИПРАВЛЕННЯ: Навігація відбувається, коли isLoading = false
+    if (!isLoading && initialization.isLoaded) {
+      if (!initialization.hasSetupData) {
+        console.log("Navigating to setup...");
+        router.replace(ROUTES.SETUP);
+      } else {
+        console.log("Navigating to tabs...");
+        router.replace(ROUTES.TABS_GROUP);
       }
+    }
   }, [isLoading, initialization.isLoaded, initialization.hasSetupData]);
 
 
@@ -127,13 +126,13 @@ const RootLayout = () => {
     // Відображаємо екран завантаження, поки дані не завантажаться
     // та роутер не визначиться з маршрутом
     return (
-        <ThemeProvider
-          // Використовуємо дефолтну тему для екрану завантаження
-          initialThemeName={DEFAULT_THEME}
-          initialIsPremium={false} 
-        >
-            <LoadingScreen />
-        </ThemeProvider>
+      <ThemeProvider
+        // Використовуємо дефолтну тему для екрану завантаження
+        initialThemeName={DEFAULT_THEME}
+        initialIsPremium={false}
+      >
+        <LoadingScreen />
+      </ThemeProvider>
     );
   }
 
@@ -148,8 +147,8 @@ const RootLayout = () => {
         initialIsPremium={initialization.savedIsPremium}
       >
         {/* Статус-бар має бути всередині ThemeProvider */}
-        <ThemeStatusBar /> 
-        
+        <ThemeStatusBar />
+
         <Stack
           screenOptions={{
             headerShown: false, // Приховуємо заголовок за замовчуванням
@@ -170,7 +169,7 @@ const RootLayout = () => {
             options={{
               title: "Отримати Premium",
               // Ця опція примусово використовує модальний стиль презентації для iOS
-              presentation: Platform.OS === 'ios' ? 'modal' : 'card', 
+              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
               headerShown: false, // Приховуємо header для модального вікна
               gestureEnabled: true, // Дозволяємо жести
               // Немає потреби в router.back(), оскільки модальне вікно закривається внутрішньо
@@ -187,13 +186,13 @@ export default RootLayout;
 // --- СТИЛІ ---
 
 const styles = StyleSheet.create({
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        fontSize: 16,
-        fontWeight: '500',
-    }
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500',
+  }
 });

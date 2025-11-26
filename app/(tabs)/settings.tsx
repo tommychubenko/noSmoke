@@ -3,7 +3,6 @@ import { ThemeName, AppColors } from '@/src/constants/Colors';
 import { AppTheme, Themes } from '@/src/constants/Themes';
 import { ROUTES } from '@/src/constants/Routes';
 import { useTheme } from '@/src/hooks/useTheme';
-import * as storageService from '@/src/services/storageService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState, useCallback } from 'react'; // Додано useCallback
@@ -30,10 +29,10 @@ const SettingItem: React.FC<SettingItemProps> = ({ title, description, icon, chi
 
     const Content = (
         <View style={[styles.settingItem, { borderBottomColor: colors.separator }]}>
-            <MaterialCommunityIcons 
-                name={icon} 
-                size={24} 
-                color={colors.accentPrimary} 
+            <MaterialCommunityIcons
+                name={icon}
+                size={24}
+                color={colors.accentPrimary}
                 style={styles.icon}
             />
             <View style={styles.textContainer}>
@@ -91,15 +90,15 @@ const ThemeSelectorItem: React.FC<{
             disabled={isSelected}
         >
             <View style={styles.themeInfo}>
-                
+
                 <View style={styles.themeColorSwatchContainer}>
                     <View style={[styles.themeColorSwatch, { backgroundColor: theme.colors.accentPrimary }]} />
                     <View style={[styles.themeColorSwatch, { backgroundColor: theme.colors.backgroundPrimary }]} />
                     <View style={[styles.themeColorSwatch, { backgroundColor: theme.colors.textPrimary }]} />
                 </View>
-                   <Text style={[styles.themeTitle, { color: isLocked ? colors.textSecondary : colors.textPrimary }]}>
-                        {theme.displayName}
-                   </Text>
+                <Text style={[styles.themeTitle, { color: isLocked ? colors.textSecondary : colors.textPrimary }]}>
+                    {theme.displayName}
+                </Text>
             </View>
 
             <View style={styles.themeAction}>
@@ -108,7 +107,7 @@ const ThemeSelectorItem: React.FC<{
                 ) : isSelected ? (
                     <MaterialCommunityIcons name="check-circle" size={24} color={colors.accentPrimary} />
                 ) : (
-                    <Text style={[styles.selectText, { color: colors.accentPrimary }]}>Вибрати</Text>
+                    <Text style={[styles.selectText, { color: colors.accentPrimary }]}>Select</Text>
                 )}
             </View>
         </TouchableOpacity>
@@ -119,21 +118,21 @@ const ThemeSelectorItem: React.FC<{
 // --- ОСНОВНИЙ КОМПОНЕНТ ЕКРАНА ---
 
 const SettingsScreen = () => {
-    const { 
-        colors, 
-        currentThemeName, 
+    const {
+        colors,
+        currentThemeName,
         setAppTheme,
         isUserPremium,
         setUserPremiumStatus,
         currentTheme
-    } = useTheme(); 
+    } = useTheme();
     const [isSaving, setIsSaving] = useState(false);
     // Стан для статусу сповіщень
     const [notificationStatus, setNotificationStatus] = useState<'granted' | 'denied' | 'unknown'>('unknown');
 
 
     // --- ЛОГІКА СПОВІЩЕНЬ ---
-    
+
     /**
      * Перевіряє поточний статус дозволу на сповіщення та оновлює стан.
      * Загорнуто в useCallback для забезпечення стабільності.
@@ -141,7 +140,7 @@ const SettingsScreen = () => {
     const checkNotificationPermissions = useCallback(async () => {
         try {
             const settings = await Notifications.getPermissionsAsync();
-            
+
             // Використовуємо лише уніфікований settings.status
             if (settings.status === Notifications.PermissionStatus.GRANTED) {
                 setNotificationStatus('granted');
@@ -151,7 +150,7 @@ const SettingsScreen = () => {
                 setNotificationStatus('unknown');
             }
         } catch (e) {
-            console.error("Помилка під час отримання статусу сповіщень:", e);
+            console.error("Error retrieving notification status:", e);
             setNotificationStatus('unknown');
         }
     }, [setNotificationStatus]); // setNotificationStatus - це функція-сеттер, яка є стабільною, але додаємо для повної впевненості
@@ -165,32 +164,32 @@ const SettingsScreen = () => {
 
         if (settings.status === Notifications.PermissionStatus.GRANTED) {
             // Якщо дозвіл вже надано, оновлюємо статус і виходимо.
-            await checkNotificationPermissions(); 
+            await checkNotificationPermissions();
             return;
         }
 
         if (settings.status === Notifications.PermissionStatus.DENIED) {
             // Якщо дозвіл відхилено, відкриваємо налаштування ОС
             Alert.alert(
-                "Дозвіл потрібен",
-                "Щоб увімкнути сповіщення, вам потрібно надати дозвіл у системних налаштуваннях додатка.",
+                "Permission Required",
+                "To enable notifications, you need to grant permission in the app's system settings.",
                 [
-                    { text: "Скасувати", style: "cancel" },
-                    { text: "Відкрити Налаштування", onPress: () => Linking.openSettings() },
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Open Settings", onPress: () => Linking.openSettings() },
                 ]
             );
             // Тут ми покладаємося на useFocusEffect при поверненні користувача з налаштувань ОС.
-            return; 
+            return;
         }
 
         // Якщо статус 'unknown' або 'undetermined', запитуємо дозвіл
         const finalStatus = await Notifications.requestPermissionsAsync();
         if (finalStatus.status === Notifications.PermissionStatus.GRANTED) {
-            Alert.alert("Успіх", "Сповіщення успішно увімкнено.");
+            Alert.alert("Success", "Notifications successfully enabled.");
         } else {
-            Alert.alert("Відмовлено", "Ви відмовились від сповіщень. Перейдіть до налаштувань, щоб змінити це.");
+            Alert.alert("Denied", "You have denied notifications. Go to settings to change this.");
         }
-        
+
         // Оновлюємо UI після внутрішнього запиту дозволу.
         await checkNotificationPermissions();
     };
@@ -213,10 +212,10 @@ const SettingsScreen = () => {
      */
     const handleThemeToggle = async (value: boolean) => {
         setIsSaving(true);
-        const newThemeName: ThemeName = value 
-            ? AppColors.Theme3.name as ThemeName 
-            : AppColors.Theme1.name as ThemeName; 
-            
+        const newThemeName: ThemeName = value
+            ? AppColors.Theme3.name as ThemeName
+            : AppColors.Theme1.name as ThemeName;
+
         await setAppTheme(newThemeName);
         setIsSaving(false);
     };
@@ -229,13 +228,13 @@ const SettingsScreen = () => {
             setIsSaving(true);
             await setAppTheme(newThemeName);
         } catch (error) {
-            Alert.alert("Помилка", "Не вдалося зберегти тему.");
+            Alert.alert("Error", "Failed to save theme.");
             console.error(error);
         } finally {
             setIsSaving(false);
         }
     };
-    
+
     /**
      * Handles the manual toggle of the Premium status (для тестування).
      */
@@ -244,8 +243,8 @@ const SettingsScreen = () => {
         await setUserPremiumStatus(value);
         setIsSaving(false);
         Alert.alert(
-            "Статус оновлено", 
-            `Підписка тепер: ${value ? 'Premium' : 'Standard'}`
+            "Status Updated",
+            `Subscription now: ${value ? 'Premium' : 'Standard'}`
         );
     };
 
@@ -272,20 +271,20 @@ const SettingsScreen = () => {
     // };
 
     // --- RENDER LOGIC ---
-    const isCurrentThemeDark = currentTheme.isDark; 
+    const isCurrentThemeDark = currentTheme.isDark;
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundPrimary }]}>
             <ScrollView contentContainerStyle={styles.scrollContainer}>
-                <Text style={[styles.header, { color: colors.textPrimary }]}>Налаштування</Text>
+                <Text style={[styles.header, { color: colors.textPrimary }]}>Settings</Text>
 
                 {/* 1. РОЗДІЛ: НАЛАШТУВАННЯ ТЕМИ */}
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Зовнішній Вигляд</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Appearance</Text>
 
                 {/* ШВИДКИЙ ПЕРЕМИКАЧ ТЕМНОГО РЕЖИМУ */}
                 <SettingItem
-                    title="Темний Режим"
-                    description="Перемикання поточної палітри на Світлу/Темну за замовчуванням."
+                    title="Dark Mode"
+                    description="Switching the current palette to Light/Dark by default."
                     icon="theme-light-dark"
                 >
                     <Switch
@@ -311,48 +310,48 @@ const SettingsScreen = () => {
                 </View>
 
                 {/* 2. РОЗДІЛ: СПОВІЩЕННЯ */}
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Сповіщення</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Notifications</Text>
 
                 <SettingItem
-                    title="Керування Сповіщеннями"
+                    title="Manage Notifications"
                     description={
                         notificationStatus === 'granted'
-                            ? 'Сповіщення увімкнено. Ви отримуватимете важливі нагадування.'
+                            ? 'Notifications are enabled. You will receive important reminders.'
                             : notificationStatus === 'denied'
-                                ? 'Сповіщення вимкнено. Натисніть, щоб надати дозвіл (або відкрити налаштування).'
-                                : 'Натисніть, щоб перевірити або налаштувати дозвіл.'
+                                ? 'Notifications are disabled. Tap to grant permission (or open settings).'
+                                : 'Tap to check or configure permission.'
                     }
                     icon="bell-ring-outline"
                     isAction={true}
                     onPress={handleNotificationPress}
                 >
                     <View style={[
-                        styles.actionButton, 
-                        { 
-                            backgroundColor: notificationStatus === 'granted' ? colors.accentPrimary : AppColors.DefaultColors.error, 
+                        styles.actionButton,
+                        {
+                            backgroundColor: notificationStatus === 'granted' ? colors.accentPrimary : AppColors.DefaultColors.error,
                             paddingHorizontal: 10,
                             marginRight: -10, // Adjust spacing for visual balance
                         }
                     ]}>
                         {/* ВИПРАВЛЕНО КОНТРАСТ: використання білого кольору на кольоровому фоні */}
-                        <Text style={{ 
-                            color: AppColors.DefaultColors.white, 
+                        <Text style={{
+                            color: AppColors.DefaultColors.white,
                             fontWeight: '600',
                             fontSize: 12
                         }}>
-                            {notificationStatus === 'granted' ? 'АКТИВНО' : 'ВИМКНЕНО'}
+                            {notificationStatus === 'granted' ? 'ACTIVE' : 'DISABLED'}
                         </Text>
                     </View>
                 </SettingItem>
 
 
                 {/* 3. РОЗДІЛ: ПРЕМІУМ (Включає Тестовий Перемикач) */}
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Преміум</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Premium</Text>
 
                 {/* ТЕСТОВИЙ ПЕРЕМИКАЧ PREMIUM/NOT PREMIUM */}
-                <SettingItem
+                {/* <SettingItem
                     title="Статус Premium (Тест)"
-                    description={`Поточний статус: ${isUserPremium ? "АКТИВНО" : "НЕАКТИВНО"}. Для розробки.`}
+                    description={`Current Status: ${isUserPremium ? "ACTIVE" : "INACTIVE"}. For development.`}
                     icon="crown-outline"
                 >
                     <Switch
@@ -362,12 +361,12 @@ const SettingsScreen = () => {
                         thumbColor={colors.backgroundPrimary}
                         disabled={isSaving}
                     />
-                </SettingItem>
-                
+                </SettingItem> */}
+
                 {/* КНОПКА КЕРУВАННЯ ПІДПИСКОЮ */}
                 <SettingItem
-                    title="Premium Доступ"
-                    description={isUserPremium ? "Ви маєте повний доступ до всіх функцій." : "Розблокуйте всі функції та теми."}
+                    title="Premium Access"
+                    description={isUserPremium ? "You have full access to all features." : "Unlock all features and themes."}
                     icon="diamond-stone"
                     isAction={true}
                     onPress={() => router.push(ROUTES.PREMIUM_MODAL)}
@@ -375,18 +374,18 @@ const SettingsScreen = () => {
                     {/* ВИПРАВЛЕНО: Прибрано зайвий TouchableOpacity, оскільки SettingItem вже обробляє натискання */}
                     <View style={[styles.actionButton, { backgroundColor: colors.accentPrimary }]}>
                         {/* ВИПРАВЛЕНО КОНТРАСТ: використання білого кольору на кольоровому фоні */}
-                        <Text style={{ color: AppColors.DefaultColors.white, fontWeight: '600' }}>{isUserPremium ? "Керувати" : "Оновити"}</Text>
+                        <Text style={{ color: AppColors.DefaultColors.white, fontWeight: '600' }}>{isUserPremium ? "Manage" : "Get Premium"}</Text>
                     </View>
                 </SettingItem>
 
 
                 {/* 4. РОЗДІЛ: СКИНУТИ ДАНІ */}
                 <View style={[styles.resetSection, { borderTopColor: colors.separator }]}>
-                    <Text style={[styles.resetTitle, { color: colors.textPrimary }]}>Скинути Дані</Text>
+                    <Text style={[styles.resetTitle, { color: colors.textPrimary }]}>Reset All Data</Text>
                     <Text style={[styles.resetDescription, { color: colors.textSecondary }]}>
-                        Ця дія видалить всю вашу історію та налаштування, і ви почнете все спочатку.
+                       This action will delete all your history and settings, and you will start over.
                     </Text>
-                    <ResetDataButton/>
+                    <ResetDataButton />
                 </View>
 
 

@@ -78,8 +78,8 @@ const SetupScreen = () => {
     // ✅ Додано перевірку нових полів
     if (cigarettesPerDay <= 0 || packPrice <= 0 || cigarettesPerPack <= 0) {
         Alert.alert(
-            "Помилка вводу", 
-            "Будь ласка, переконайтеся, що всі числові значення (сигарети, ціна пачки, сигарети в пачці) більші за нуль."
+            "Input error",
+"Please make sure all numeric values ​​(cigarettes, pack price, cigarettes in pack) are greater than zero."
         );
         return;
     }
@@ -113,7 +113,7 @@ startDateObject.setDate(startDateObject.getDate() - testDaysAgo);
         
         goToApp();
     } catch (error) {
-        Alert.alert("Помилка", "Не вдалося зберегти налаштування. Спробуйте ще раз.");
+        Alert.alert("Error", "Failed to save settings. Please try again.");
         console.error("Setup save error:", error);
     } finally {
         setIsSaving(false);
@@ -128,16 +128,16 @@ startDateObject.setDate(startDateObject.getDate() - testDaysAgo);
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
         {/* HEADER */}
-        <Text style={[styles.header, { color: colors.textPrimary }]}>Ваш план кидання</Text>
+        <Text style={[styles.header, { color: colors.textPrimary }]}>Your quitting plan</Text>
         <Text style={[styles.subHeader, { color: colors.textSecondary }]}>
-          Введіть свої поточні звички, щоб ми могли створити ефективний індивідуальний план зменшення.
+          Please input your current habits. We will use them to build an effective, personalized quit plan.
         </Text>
         
         {/* СЕКЦІЯ: МОЇ ЗВИЧКИ */}
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>🚬 Мої Звички</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>🚬 Your Habits</Text>
         
         {/* КІЛЬКІСТЬ СИГАРЕТ НА ДЕНЬ */}
-        <SetupItem label="Сигарет на день (у середньому)" value={cigarettesPerDay} onPress={() => { /* Модалка для вводу числа */ }}>
+        <SetupItem label="Average daily cigarettes" value={cigarettesPerDay} onPress={() => { /* Модалка для вводу числа */ }}>
           <Text style={[styles.valueText, { color: colors.textPrimary }]}>{cigarettesPerDay}</Text>
           <View style={styles.stepperContainer}>
               <ThemedButton title="-" onPress={() => setCigarettesPerDay(Math.max(5, cigarettesPerDay - 1))} containerStyle={styles.stepperButton} useSecondaryColor={true} />
@@ -146,20 +146,20 @@ startDateObject.setDate(startDateObject.getDate() - testDaysAgo);
         </SetupItem>
         
         {/* АКТИВНИЙ ЧАС (ПОЧАТОК) */}
-        <SetupItem label="Активний час (Початок)" value={activeStartTime} onPress={() => { /* Модалка для вибору часу */ }}>
+        <SetupItem label="Active Period (Start)" value={activeStartTime} onPress={() => { /* Модалка для вибору часу */ }}>
           <Text style={[styles.valueText, { color: colors.textPrimary }]}>{activeStartTime}</Text>
         </SetupItem>
         
         {/* АКТИВНИЙ ЧАС (КІНЕЦЬ) */}
-        <SetupItem label="Активний час (Кінець)" value={activeEndTime} onPress={() => { /* Модалка для вибору часу */ }}>
+        <SetupItem label="End of Active Day" value={activeEndTime} onPress={() => { /* Модалка для вибору часу */ }}>
           <Text style={[styles.valueText, { color: colors.textPrimary }]}>{activeEndTime}</Text>
         </SetupItem>
         
         {/* ✅ НОВА СЕКЦІЯ: ФІНАНСИ */}
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>💰 Фінанси</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>💰 Finances</Text>
 
         {/* ВВІД ЦІНИ ПАЧКИ */}
-        <SetupItem label="Ціна пачки (грн)" value={packPrice} onPress={() => { /* Модалка для вводу числа */ }}>
+        <SetupItem label="Cost per Pack (USD)" value={packPrice} onPress={() => { /* Модалка для вводу числа */ }}>
           <Text style={[styles.valueText, { color: colors.textPrimary }]}>{packPrice}</Text>
           <View style={styles.stepperContainer}>
               <ThemedButton title="-" onPress={() => setPackPrice(Math.max(10, packPrice - 5))} containerStyle={styles.stepperButton} useSecondaryColor={true} />
@@ -168,7 +168,7 @@ startDateObject.setDate(startDateObject.getDate() - testDaysAgo);
         </SetupItem>
 
         {/* КІЛЬКІСТЬ СИГАРЕТ У ПАЧЦІ */}
-        <SetupItem label="Сигарет у пачці" value={cigarettesPerPack} onPress={() => { /* Модалка для вводу числа */ }}>
+        <SetupItem label="Cigarettes per pack" value={cigarettesPerPack} onPress={() => { /* Модалка для вводу числа */ }}>
           <Text style={[styles.valueText, { color: colors.textPrimary }]}>{cigarettesPerPack}</Text>
           <View style={styles.stepperContainer}>
               <ThemedButton title="-" onPress={() => setCigarettesPerPack(Math.max(10, cigarettesPerPack - 1))} containerStyle={styles.stepperButton} useSecondaryColor={true} />
@@ -177,7 +177,7 @@ startDateObject.setDate(startDateObject.getDate() - testDaysAgo);
         </SetupItem>
         
         {/* СЕКЦІЯ: ТИП ПЛАНУ */}
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>🎯 Тип Плану</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>🎯 Quitting Plan Type</Text>
         
         {/* ВИБІР ТИПУ ПЛАНУ */}
         <View style={[styles.planSelectorContainer, { borderColor: colors.separator }]}>
@@ -185,22 +185,22 @@ startDateObject.setDate(startDateObject.getDate() - testDaysAgo);
                 style={[styles.planButton, planType === 'slow' && { backgroundColor: colors.accentPrimary + '15', borderColor: colors.accentPrimary }]} 
                 onPress={() => handlePlanSelect('slow')}
             >
-                <Text style={[styles.planTitle, { color: colors.textPrimary }]}>Повільний</Text>
-                <Text style={[styles.planDescription, { color: colors.textSecondary }]}>М'яке зменшення, ідеально для тих, хто вперше кидає.</Text>
+                <Text style={[styles.planTitle, { color: colors.textPrimary }]}>Slow Reduction</Text>
+                <Text style={[styles.planDescription, { color: colors.textSecondary }]}>Gradual Tapering. Perfect for those quitting for the first time.</Text>
             </TouchableOpacity>
             <TouchableOpacity 
                 style={[styles.planButton, planType === 'balanced' && { backgroundColor: colors.accentPrimary + '15', borderColor: colors.accentPrimary }]} 
                 onPress={() => handlePlanSelect('balanced')}
             >
-                <Text style={[styles.planTitle, { color: colors.textPrimary }]}>Збалансований</Text>
-                <Text style={[styles.planDescription, { color: colors.textSecondary }]}>Стандартний, помірний темп з хорошим балансом.</Text>
+                <Text style={[styles.planTitle, { color: colors.textPrimary }]}>Balanced</Text>
+                <Text style={[styles.planDescription, { color: colors.textSecondary }]}>The standard, moderate pace with a good balance.</Text>
             </TouchableOpacity>
             <TouchableOpacity 
                 style={[styles.planButton, planType === 'aggressive' && { backgroundColor: colors.accentPrimary + '15', borderColor: colors.accentPrimary }]} 
                 onPress={() => handlePlanSelect('aggressive')}
             >
-                <Text style={[styles.planTitle, { color: colors.textPrimary }]}>Агресивний</Text>
-                <Text style={[styles.planDescription, { color: colors.textSecondary }]}>Швидке зменшення, для рішучих користувачів.</Text>
+                <Text style={[styles.planTitle, { color: colors.textPrimary }]}>Intense</Text>
+                <Text style={[styles.planDescription, { color: colors.textSecondary }]}>Fast reduction. For determined users.</Text>
             </TouchableOpacity>
         </View>
 
@@ -209,7 +209,7 @@ startDateObject.setDate(startDateObject.getDate() - testDaysAgo);
       {/* КНОПКА ЗБЕРЕЖЕННЯ */}
       <View style={[styles.floatingButtonContainer, { borderTopColor: colors.separator }]}>
         <ThemedButton 
-            title={isSaving ? "Збереження..." : "Почати План"}
+            title={isSaving ? "Save..." : "Begin Plan"}
             onPress={handleSaveAndGoToApp}
             disabled={isSaving}
         />
@@ -296,13 +296,13 @@ const styles = StyleSheet.create({
   },
   // Floating Button styles
   floatingButtonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    // position: 'absolute',
+    // bottom: 0,
+    // left: 0,
+    // right: 0,
     paddingHorizontal: 20,
-    paddingVertical: Platform.OS === 'ios' ? 20 : 10,
-    borderTopWidth: 1,
+    paddingVertical: Platform.OS === 'ios' ? 20 : 20,
+    // borderTopWidth: 1,
     alignItems: 'center',
   },
 });

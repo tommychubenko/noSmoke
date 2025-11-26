@@ -23,12 +23,12 @@ interface ResetDataButtonProps {
  */
 const handleResetData = async () => {
     Alert.alert(
-        "Скинути Всі Дані",
-        "Ви впевнені, що хочете скинути всі ваші дані? Цю дію не можна скасувати.",
+        "Reset All Data",
+        "Are you sure you want to reset all your data? This action cannot be undone.",
         [
-            { text: "Скасувати", style: "cancel" },
+            { text: "Cancel", style: "cancel" },
             { 
-                text: "Скинути", 
+                text: "Reset", 
                 style: "destructive", 
                 onPress: async () => {
                     // 1. Виклик функції очищення всіх даних
@@ -47,7 +47,7 @@ const handleResetData = async () => {
 const ResetDataButton: React.FC<ResetDataButtonProps> = ({ containerStyle }) => {
     return (
         <ThemedButton 
-            title="Скинути Всі Дані"
+            title="Reset all data"
             onPress={handleResetData}
             useSecondaryColor={true}
             // Використовуємо статичні кольори, оскільки це кнопка помилки/небезпеки

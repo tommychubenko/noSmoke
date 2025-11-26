@@ -1,15 +1,15 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router'; 
-import React, { useState, useCallback } from 'react'; 
-import { ScrollView, StyleSheet, Text, TouchableOpacity, Platform, View, ActivityIndicator, Alert } from 'react-native';
+import { router } from 'expo-router';
+import React, { useState, useCallback } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 // 🟢 ІМПОРТ: Додано useSafeAreaInsets
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'; 
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // 🟢 ІМПОРТИ ДЛЯ ФУНКЦІОНАЛУ
-import ThemedButton from '../src/components/ThemedButton'; 
-import { useTheme } from '../src/hooks/useTheme'; 
-import { useRevenueCat, PurchasesPackage } from '../src/context/RevenueCatContext'; 
-import { DefaultColors } from '@/src/constants/Colors'; 
+import ThemedButton from '../src/components/ThemedButton';
+import { useTheme } from '../src/hooks/useTheme';
+import { useRevenueCat, PurchasesPackage } from '../src/context/RevenueCatContext';
+import { DefaultColors } from '@/src/constants/Colors';
 
 // =================================================================
 // --- ДОПОМІЖНІ КОМПОНЕНТИ ---
@@ -23,18 +23,18 @@ const CloseButton: React.FC = () => {
 
     return (
         // 🟢 ВИПРАВЛЕННЯ СТИЛЮ: Встановлюємо динамічний відступ зверху
-        <TouchableOpacity 
+        <TouchableOpacity
             style={[
-                styles.closeButton, 
+                styles.closeButton,
                 // Якщо є відступ (наприклад, на iOS), використовуємо його; інакше – стандартний відступ.
-                { top: Math.max(insets.top, 20) } 
-            ]} 
+                { top: Math.max(insets.top, 20) }
+            ]}
             onPress={() => router.back()}
         >
-            <MaterialCommunityIcons 
-                name="close-circle" 
-                size={30} 
-                color={colors.textSecondary} 
+            <MaterialCommunityIcons
+                name="close-circle"
+                size={30}
+                color={colors.textSecondary}
             />
         </TouchableOpacity>
     );
@@ -44,21 +44,21 @@ const CloseButton: React.FC = () => {
 interface FeatureItemProps {
     text: string;
     icon: keyof typeof MaterialCommunityIcons.glyphMap;
-    isPremiumOwned?: boolean; 
+    isPremiumOwned?: boolean;
 }
 
 const FeatureItem: React.FC<FeatureItemProps> = ({ text, icon, isPremiumOwned = false }) => {
     const { colors } = useTheme();
-    
+
     const displayIcon = isPremiumOwned ? 'check-circle' : icon;
     const displayColor = isPremiumOwned ? DefaultColors.success : colors.accentPrimary;
 
     return (
         <View style={styles.featureItem}>
-            <MaterialCommunityIcons 
-                name={displayIcon} 
-                size={24} 
-                color={displayColor} 
+            <MaterialCommunityIcons
+                name={displayIcon}
+                size={24}
+                color={displayColor}
             />
             <View style={styles.featureTextContent}>
                 <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>{text}</Text>
@@ -76,19 +76,19 @@ interface PriceBoxProps {
 }
 
 const PriceBox: React.FC<PriceBoxProps> = ({ pkg, onPress, isLoading, colors }) => {
-    
+
     const isAnnual = pkg.identifier.includes('annual');
-    
-    const title = isAnnual ? 'Річна Підписка' : 'Місячна Підписка';
-    const periodText = isAnnual ? 'за рік' : 'за місяць';
-    
+
+    const title = isAnnual ? 'Annual Subscription' : 'Monthly Subscription';
+    const periodText = isAnnual ? 'annual' : 'monthly';
+
     const borderColor = isAnnual ? colors.accentPrimary : colors.separator;
     const backgroundColor = isAnnual ? colors.backgroundSecondary : colors.backgroundPrimary;
     const priceColor = colors.textPrimary;
 
     return (
-        <TouchableOpacity 
-            style={[styles.priceBox, { borderColor, backgroundColor }]} 
+        <TouchableOpacity
+            style={[styles.priceBox, { borderColor, backgroundColor }]}
             onPress={() => onPress(pkg)}
             disabled={isLoading}
         >
@@ -105,10 +105,10 @@ const PriceBox: React.FC<PriceBoxProps> = ({ pkg, onPress, isLoading, colors }) 
 
 // --- СПИСОК ПЕРЕВАГ ---
 const features = [
-    { text: "Усі Premium теми та кольорові схеми", icon: "palette" as const },
-    { text: "Детальна статистика використання", icon: "chart-timeline-variant-shimmer" as const },
-    { text: "Видалення всієї реклами", icon: "block-helper" as const }, 
-    { text: "Додаткові інструменти та налаштування", icon: "hammer-screwdriver" as const },
+    { text: "All Premium Themes & Schemes", icon: "palette" as const },
+    { text: "In-depth Usage Statistics", icon: "chart-timeline-variant-shimmer" as const },
+    { text: "Remove all advertising", icon: "block-helper" as const },
+    { text: "Extra Tools and Customization", icon: "hammer-screwdriver" as const },
 ];
 
 // =================================================================
@@ -121,29 +121,29 @@ interface PremiumContentProps {
 const PremiumContent: React.FC<PremiumContentProps> = ({ colors }) => (
     <>
         <Text style={[styles.mainTitle, { color: DefaultColors.success, fontSize: 38 }]}>
-            Вітаємо! 🎉
+            Hooray! 🎉
         </Text>
         <Text style={[styles.subTitle, { color: colors.textPrimary }]}>
-            У вас вже активна Premium підписка.
+            You already have an active Premium subscription.
         </Text>
         <Text style={[styles.subTitle, { color: colors.textSecondary, marginBottom: 40 }]}>
-            Насолоджуйтесь повним доступом до всіх функцій додатку!
+            Enjoy full access to all app features!
         </Text>
 
         {/* Список переваг (з іконками-галочками) */}
         <View style={styles.featureList}>
             {features.map((feature, index) => (
-                <FeatureItem 
-                    key={index} 
-                    text={feature.text} 
-                    icon={feature.icon} 
+                <FeatureItem
+                    key={index}
+                    text={feature.text}
+                    icon={feature.icon}
                     isPremiumOwned={true} // Передаємо статус Premium
                 />
             ))}
         </View>
 
-        <ThemedButton 
-            title="Повернутися до Додатку"
+        <ThemedButton
+            title="Back to App"
             onPress={() => router.back()}
             containerStyle={{ marginTop: 30 }}
         />
@@ -160,28 +160,28 @@ interface NonPremiumContentProps extends PremiumContentProps {
     isRcLoading: boolean;
 }
 
-const NonPremiumContent: React.FC<NonPremiumContentProps> = ({ 
-    colors, 
-    monthlyPackage, 
-    annualPackage, 
-    onPurchase, 
-    isRcLoading 
+const NonPremiumContent: React.FC<NonPremiumContentProps> = ({
+    colors,
+    monthlyPackage,
+    annualPackage,
+    onPurchase,
+    isRcLoading
 }) => (
     <>
         <Text style={[styles.mainTitle, { color: colors.textPrimary }]}>
-            Premium Доступ
+            Premium Access
         </Text>
         <Text style={[styles.subTitle, { color: colors.textSecondary }]}>
-            Розблокуйте додаткові функції та підтримайте розвиток додатку.
+            Unlock extra features and support the app's development.
         </Text>
 
         {/* Список переваг (з іконками-акцентами) */}
         <View style={styles.featureList}>
             {features.map((feature, index) => (
-                <FeatureItem 
-                    key={index} 
-                    text={feature.text} 
-                    icon={feature.icon} 
+                <FeatureItem
+                    key={index}
+                    text={feature.text}
+                    icon={feature.icon}
                 />
             ))}
         </View>
@@ -189,24 +189,24 @@ const NonPremiumContent: React.FC<NonPremiumContentProps> = ({
         {/* Вибір ціни */}
         <View style={styles.priceContainer}>
             {monthlyPackage && (
-                <PriceBox 
-                    pkg={monthlyPackage} 
-                    onPress={onPurchase} 
-                    isLoading={isRcLoading} 
+                <PriceBox
+                    pkg={monthlyPackage}
+                    onPress={onPurchase}
+                    isLoading={isRcLoading}
                     colors={colors}
                 />
             )}
             {annualPackage && (
-                <PriceBox 
-                    pkg={annualPackage} 
-                    onPress={onPurchase} 
-                    isLoading={isRcLoading} 
+                <PriceBox
+                    pkg={annualPackage}
+                    onPress={onPurchase}
+                    isLoading={isRcLoading}
                     colors={colors}
                 />
             )}
             {(!monthlyPackage && !annualPackage) && (
-                 <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 20 }}>
-                    Наразі доступні пропозиції відсутні.
+                <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 20 }}>
+                    No offers are currently available.
                 </Text>
             )}
         </View>
@@ -219,14 +219,14 @@ const NonPremiumContent: React.FC<NonPremiumContentProps> = ({
 // =================================================================
 
 const PremiumModalScreen: React.FC = () => {
-    const { colors, isUserPremium } = useTheme(); 
-    
-    const { 
-        isRcReady, 
-        offerings, 
-        isLoading: isRcLoading, 
-        handlePurchase, 
-        restorePurchases 
+    const { colors, isUserPremium } = useTheme();
+
+    const {
+        isRcReady,
+        offerings,
+        isLoading: isRcLoading,
+        handlePurchase,
+        restorePurchases
     } = useRevenueCat();
 
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -244,9 +244,9 @@ const PremiumModalScreen: React.FC = () => {
             </SafeAreaView>
         );
     }
-    
-    const currentOffering = offerings?.current; 
-    
+
+    const currentOffering = offerings?.current;
+
     const monthlyPackage = currentOffering?.availablePackages.find(pkg => pkg.identifier.includes('monthly'));
     const annualPackage = currentOffering?.availablePackages.find(pkg => pkg.identifier.includes('annual'));
 
@@ -254,10 +254,10 @@ const PremiumModalScreen: React.FC = () => {
     const onPurchase = useCallback(async (pkg: PurchasesPackage) => {
         const success = await handlePurchase(pkg);
         if (success) {
-            setMessage({ text: "Покупка успішна! Дякуємо за підтримку.", type: 'success' });
-            setTimeout(() => router.back(), 2000); 
+            setMessage({ text: "Purchase successful! Thank you for your support.", type: 'success' });
+            setTimeout(() => router.back(), 2000);
         } else {
-            setMessage({ text: "Помилка покупки або скасовано.", type: 'error' });
+            setMessage({ text: "Purchase failed or cancelled.", type: 'error' });
         }
     }, [handlePurchase]);
 
@@ -265,21 +265,21 @@ const PremiumModalScreen: React.FC = () => {
     const onRestore = useCallback(async () => {
         const success = await restorePurchases();
         if (success) {
-            setMessage({ text: "Покупки відновлено!", type: 'success' });
-            setTimeout(() => router.back(), 2000); 
+            setMessage({ text: "Purchases Restored!", type: 'success' });
+            setTimeout(() => router.back(), 2000);
         } else {
-            setMessage({ text: "Активних покупок не знайдено.", type: 'error' });
+            setMessage({ text: "We couldn't find any active purchases.", type: 'error' });
         }
     }, [restorePurchases]);
 
     if (!isUserPremium && !currentOffering) {
-         return (
+        return (
             <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.backgroundPrimary }]}>
                 <CloseButton />
                 <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
                     <MaterialCommunityIcons name="alert-circle-outline" size={50} color={DefaultColors.error} />
                     <Text style={{ color: colors.textPrimary, marginTop: 15, textAlign: 'center' }}>
-                        Не знайдено пропозицій підписки. Спробуйте пізніше.
+                        No subscription offers found. Please try again later.
                     </Text>
                 </View>
             </SafeAreaView>
@@ -294,8 +294,8 @@ const PremiumModalScreen: React.FC = () => {
             {/* Банер повідомлень */}
             {message && (
                 <View style={[
-                    styles.messageBar, 
-                    { 
+                    styles.messageBar,
+                    {
                         backgroundColor: message.type === 'success' ? DefaultColors.success : DefaultColors.error,
                     }
                 ]}>
@@ -308,7 +308,7 @@ const PremiumModalScreen: React.FC = () => {
                 </View>
             )}
 
-            <ScrollView 
+            <ScrollView
                 contentContainerStyle={styles.container}
                 showsVerticalScrollIndicator={false}
             >
@@ -316,7 +316,7 @@ const PremiumModalScreen: React.FC = () => {
                 {isUserPremium ? (
                     <PremiumContent colors={colors} />
                 ) : (
-                    <NonPremiumContent 
+                    <NonPremiumContent
                         colors={colors}
                         monthlyPackage={monthlyPackage}
                         annualPackage={annualPackage}
@@ -330,17 +330,17 @@ const PremiumModalScreen: React.FC = () => {
             {!isUserPremium && (
                 <View style={[styles.footer, { borderColor: colors.separator, backgroundColor: colors.backgroundPrimary }]}>
                     {/* Кнопка "Відновити Покупки" */}
-                    <TouchableOpacity 
-                        onPress={onRestore} 
+                    <TouchableOpacity
+                        onPress={onRestore}
                         disabled={isRcLoading}
                     >
                         <Text style={[styles.restoreText, { color: colors.accentPrimary }]}>
-                            {isRcLoading ? 'Відновлення...' : 'Відновити Покупки'}
+                            {isRcLoading ? 'Restoring...' : 'Restore Purchases'}
                         </Text>
                     </TouchableOpacity>
-                    
+
                     <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                        Покупка керується умовами App Store / Google Play.
+                        The purchase is governed by the App Store / Google Play terms.
                     </Text>
                 </View>
             )}
@@ -361,8 +361,8 @@ const styles = StyleSheet.create({
     container: {
         paddingHorizontal: 20,
         // 🟢 ВИПРАВЛЕНО: Збільшуємо верхній відступ, щоб контент не заїжджав під CloseButton
-        paddingTop: 80, 
-        paddingBottom: 150, 
+        paddingTop: 80,
+        paddingBottom: 150,
     },
     closeButton: {
         position: 'absolute',
@@ -398,20 +398,20 @@ const styles = StyleSheet.create({
     featureTextContent: {
         flex: 1,
     },
-    featureDescription: { 
-        fontSize: 16, 
+    featureDescription: {
+        fontSize: 16,
         lineHeight: 24,
-        fontWeight: '500', 
+        fontWeight: '500',
     },
     // Price Selection Styles
-    priceContainer: { 
-        flexDirection: 'row', 
-        justifyContent: 'space-around', 
-        paddingHorizontal: 10, 
-        marginBottom: 30 
+    priceContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingHorizontal: 10,
+        marginBottom: 30
     },
     priceBox: {
-        width: '48%', 
+        width: '48%',
         padding: 20,
         borderRadius: 15,
         borderWidth: 2,
@@ -437,19 +437,19 @@ const styles = StyleSheet.create({
         borderRadius: 15,
     },
     // Footer Styles
-    footer: { 
-        position: 'absolute', 
-        bottom: 0, 
-        left: 0, 
-        right: 0, 
-        paddingHorizontal: 20, 
-        paddingVertical: 15, 
-        alignItems: 'center', 
-        borderTopWidth: 1 
+    footer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 20,
+        paddingVertical: 15,
+        alignItems: 'center',
+        borderTopWidth: 1
     },
-    restoreText: { 
-        fontSize: 14, 
-        fontWeight: '700', 
+    restoreText: {
+        fontSize: 14,
+        fontWeight: '700',
         padding: 10,
     },
     infoText: {

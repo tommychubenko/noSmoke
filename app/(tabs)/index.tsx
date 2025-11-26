@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useMemo } from 'react';
-import { ActivityIndicator, Dimensions, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 // ВАЖЛИВО: Потрібно встановити 'react-native-svg': npx expo install react-native-svg
 import Svg, { Circle } from 'react-native-svg';
 import ThemedButton from '../../src/components/ThemedButton'; // FIX: Added 'src/' to the path
@@ -10,7 +10,6 @@ import { ROUTES } from '@/src/constants/Routes';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Foundation } from '@expo/vector-icons';
 import { BannerAd, BannerAdSize, TestIds, RewardedAd } from 'react-native-google-mobile-ads'; // <-- ДОДАНО
-import { AppColors } from '@/src/constants/Colors';
 import ResetDataButton from '@/src/components/ResetDataButton';
 
 const ADMOB_BANNER_ID = __DEV__
@@ -23,18 +22,6 @@ const ADMOB_BANNER_ID = __DEV__
 
 // NOTE: Components like ThemedButton are assumed to be defined elsewhere in the project
 // For a single-file environment, we must mock/define necessary components.
-const PlaceholderButton = (props: any) => {
-    const { colors } = useTheme();
-    return (
-        <View style={[{ padding: 10, borderRadius: 10, minWidth: 200 }, props.containerStyle, { backgroundColor: props.useSecondaryColor ? colors.backgroundSecondary : colors.accentPrimary }]}>
-            <Text style={[{ textAlign: 'center', fontSize: 16, fontWeight: '600', color: colors.textPrimary }, props.textStyle]}>
-                {props.title}
-            </Text>
-        </View>
-    );
-}
-
-
 
 
 // --- SVG PROGRESS BAR COMPONENT (НОВИЙ КОМПОНЕНТ) ---
@@ -101,8 +88,6 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
         </View>
     );
 };
-
-
 
 
 
@@ -238,30 +223,32 @@ const HomeScreen = () => {
 
                     {/* Info Text */}
                     {
-                        targetCigarettesPerDay === 0 && (
-                            <ResetDataButton/>
-                        )
-                    }
-
-
-
-                    <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                        targetCigarettesPerDay === 0 ? (
+                             <View style={styles.footer}>
+                             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                       You should be at your target for today. If not, you can start over.
+                    </Text>
+                            <ResetDataButton /></View>
+                        ) : (<><Text style={[styles.infoText, { color: colors.textSecondary }]}>
                         Your current target interval is {targetTimeText}.
                     </Text>
                     <Text style={[styles.infoText, { color: colors.textSecondary, marginBottom: 40 }]}>
                         {isPaused ? 'Timer is paused during inactive hours.' : 'Keep waiting to hit your goal!'}
-                    </Text>
-
-
-                    {/* Action Button */}
-                    <View style={styles.footer}>
+                    </Text><View style={styles.footer}>
                         <ThemedButton
                             title="I Smoked (Record)"
                             onPress={recordCigarette}
                             disabled={isPaused} // Disable if outside active hours
                             containerStyle={{ minWidth: '80%' }}
                         />
-                    </View>
+                    </View></>)
+                    }
+
+                    
+
+
+                    {/* Action Button */}
+                    
 
                     {/* Footer Links/Actions */}
                     <View style={styles.secondaryActions}>

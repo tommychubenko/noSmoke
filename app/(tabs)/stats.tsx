@@ -3,7 +3,7 @@ import { ActivityIndicator, Dimensions, Platform, ScrollView, StyleSheet, Text, 
 import ThemedButton from '../../src/components/ThemedButton';
 import { useTheme } from '../../src/hooks/useTheme';
 // Зверніть увагу: використовуємо useTimerLogic для отримання цільової кількості
-import { useTimerLogic } from '../../src/hooks/useTimerLogic'; 
+import { useTimerLogic } from '../../src/hooks/useTimerLogic';
 import { ROUTES } from '@/src/constants/Routes';
 import { router, useFocusEffect } from 'expo-router';
 import { SmokingLogEntry } from '@/src/services/storageService';
@@ -13,12 +13,12 @@ import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads'
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 40;
 
-const ADMOB_BANNER_ID = __DEV__ 
-    ? TestIds.BANNER 
-    : Platform.select({ 
-        ios: 'ca-app-pub-6658861467026382~3148246399', 
-        android: 'ca-app-pub-6658861467026382~6565581373', 
-        default: TestIds.BANNER, 
+const ADMOB_BANNER_ID = __DEV__
+    ? TestIds.BANNER
+    : Platform.select({
+        ios: 'ca-app-pub-6658861467026382~3148246399',
+        android: 'ca-app-pub-6658861467026382~6565581373',
+        default: TestIds.BANNER,
     });
 
 
@@ -69,7 +69,7 @@ const StatsScreen = () => {
         smokingLogs,
         refreshData,
         // 🎯 ГОЛОВНА ЗМІНА: Отримуємо цільову кількість сигарет на сьогодні
-        targetCigarettesPerDay, 
+        targetCigarettesPerDay,
     } = useTimerLogic(); // useTimerLogic тепер повертає всі потрібні дані
 
     const scrollPaddingBottom = isUserPremium ? 40 : 90;
@@ -110,12 +110,12 @@ const StatsScreen = () => {
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={[styles.errorContainer, { backgroundColor: colors.backgroundPrimary }]}>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>Налаштування потрібне</Text>
+                        <Text style={[styles.title, { color: colors.textPrimary }]}>Setup Required</Text>
                         <Text style={[styles.description, { color: colors.textSecondary }]}>
-                            Будь ласка, заповніть початкове налаштування, щоб почати відстежувати свій прогрес.
+                            Please complete the initial setup to start tracking your progress.
                         </Text>
                         <ThemedButton
-                            title="Почати Налаштування"
+                            title="Start Setup"
                             onPress={() => router.replace(ROUTES.SETUP)}
                             containerStyle={styles.actionButton}
                         />
@@ -144,6 +144,9 @@ const StatsScreen = () => {
             </View>
         );
     };
+    // How many logs are avaliable even for Premium user
+    const premiumLogsAvaliable = 20
+    const notPremiumLogsAvaliable = 5
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundPrimary }]}>
@@ -155,20 +158,20 @@ const StatsScreen = () => {
                 showsVerticalScrollIndicator={false}
             >
 
-                <Text style={[styles.header, { color: colors.textPrimary }]}>Ваш Прогрес</Text>
+                <Text style={[styles.header, { color: colors.textPrimary }]}>Your Progress</Text>
 
                 {/* Metrics Grid */}
                 <View style={styles.metricsGrid}>
                     <StatsCard
-                        title="Сьогодні"
+                        title="Today"
                         value={String(todayCount)}
                         // ✅ ВИПРАВЛЕНО: Використовуємо targetCigarettesPerDay замість початкової кількості
-                        unit={`з ${targetCigarettesPerDay} запланованих`}
+                        unit={`out of ${targetCigarettesPerDay} planned`}
                     />
                     <StatsCard
-                        title="Середній Інтервал"
+                        title="Average Interval"
                         value={formatTime(averageInterval)}
-                        unit="між сьогоднішніми"
+                        unit="between today's cigarettes"
                     />
                     {/* ... (інші картки закоментовані) */}
                 </View>
@@ -176,12 +179,12 @@ const StatsScreen = () => {
                 {/* Premium Teaser */}
                 {!isUserPremium && (
                     <View style={[styles.premiumTeaser, { backgroundColor: colors.backgroundSecondary, borderColor: colors.accentPrimary }]}>
-                        <Text style={[styles.teaserTitle, { color: colors.accentPrimary }]}>Отримайте Преміум</Text>
+                        <Text style={[styles.teaserTitle, { color: colors.accentPrimary }]}>Get Premium</Text>
                         <Text style={[styles.teaserDescription, { color: colors.textSecondary }]}>
-                            Відкрийте розширену аналітику, повну історію та ексклюзивні теми.
+                            Unlock advanced analytics, full history, exclusive themes, and ad removal.
                         </Text>
                         <ThemedButton
-                            title="Дізнатись Більше"
+                            title="Find Out More"
                             useSecondaryColor={true}
                             onPress={() => router.push(ROUTES.PREMIUM_MODAL)}
                             containerStyle={styles.teaserButton}
@@ -191,9 +194,11 @@ const StatsScreen = () => {
                 )}
 
                 {/* History Section (Basic) */}
-                <Text style={[styles.historyHeader, { color: colors.textPrimary }]}>Нещодавні Записи ({smokingLogs.length})</Text>
 
-                {smokingLogs.slice().sort((a, b) => b.timestamp - a.timestamp).slice(0, 10).map((log, index) => (
+                <Text style={[styles.historyHeader, { color: colors.textPrimary }]}>Last {isUserPremium ? smokingLogs.length > premiumLogsAvaliable ? premiumLogsAvaliable : smokingLogs.length : smokingLogs.length < notPremiumLogsAvaliable ? smokingLogs.length : notPremiumLogsAvaliable} of {smokingLogs.length} total logs</Text>
+
+                {smokingLogs.slice().sort((a, b) => b.timestamp - a.timestamp).slice(0, !isUserPremium ? 5 : premiumLogsAvaliable // Виправлена логіка: 10, якщо не Premium, або вся довжина, якщо Premium
+                ).map((log, index) => (
                     <View
                         key={log.timestamp + index}
                         style={[styles.logItem, { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.separator }]}
@@ -207,9 +212,9 @@ const StatsScreen = () => {
                     </View>
                 ))}
 
-                {smokingLogs.length > 10 && !isUserPremium && (
+                {smokingLogs.length > notPremiumLogsAvaliable && !isUserPremium && (
                     <Text style={[styles.historyFooter, { color: colors.textSecondary }]}>
-                        ...і ще {smokingLogs.length - 10} записів. Преміум-користувачі бачать всю історію.
+                        ...and {smokingLogs.length - notPremiumLogsAvaliable} more entries. Premium users see almost full history.
                     </Text>
                 )}
             </ScrollView>

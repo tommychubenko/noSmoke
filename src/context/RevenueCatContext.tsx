@@ -109,7 +109,7 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
             if (error.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
                 console.log("[RevenueCat] Purchase cancelled by user.");
             } else {
-                console.error("[RevenueCat] Purchase error:", e);
+                // console.error("[RevenueCat] Purchase error:", e);
                 Alert.alert("Помилка покупки", "Не вдалося завершити покупку. Спробуйте пізніше.");
             }
             return false; 
