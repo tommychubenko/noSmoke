@@ -2,44 +2,46 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 import Purchases, {
     LOG_LEVEL,
     PurchasesPackage,
-    CustomerInfo, 
-    PurchasesOfferings, 
+    CustomerInfo,
+    PurchasesOfferings,
     PURCHASES_ERROR_CODE,
-    PurchasesError 
+    PurchasesError
 } from 'react-native-purchases';
 import { Platform, Alert } from 'react-native';
 import { LogBox } from 'react-native';
-import { useTheme } from '../hooks/useTheme'; 
+import { useTheme } from '../hooks/useTheme';
 
-// --- КОНСТАНТИ ---\
+// --- КОНСТАНТИ ---
 // ⚠️ ЗАМІНІТЬ ЦЕЙ КЛЮЧ НА ВАШ ПРОДАКШН-КЛЮЧ ПЕРЕД РЕЛІЗОМ
 const REVENUECAT_API_KEY = Platform.select({
     // Тимчасово залишаємо Ваш ТЕСТОВИЙ ключ для iOS
-    ios: 'test_fsxTUrPVJaBBwQNyJMhQgafpwRt', 
-    
+    ios: 'test_fsxTUrPVJaBBwQNyJMhQgafpwRt',
+
     // 🟢 ВСТАВТЕ СЮДИ ВАШ РЕАЛЬНИЙ КЛЮЧ 'goog_' для продакшну на Android.
-    android: 'goog_AbOlDjaKPZACwHsMRryqWdpAQiI', 
-    
+    android: 'goog_AbOlDjaKPZACwHsMRryqWdpAQiI',
+
     // Якщо не визначено (наприклад, web), використовуємо Android-ключ
-    default: 'goog_AbOlDjaKPZACwHsMRryqWdpAQiI', 
+    default: 'goog_AbOlDjaKPZACwHsMRryqWdpAQiI',
 });
 // Ідентифікатор права, яке надає Premium-доступ
 const PRO_ENTITLEMENT_ID = 'tracker_premium_access';
 
 LogBox.ignoreLogs([
-  // Беремо унікальну частину тексту помилки
-  'Error fetching offerings - PurchasesError(code=ConfigurationError',
+    // Беремо унікальну частину тексту помилки
+    'Error fetching offerings - PurchasesError(code=ConfigurationError',
 ]);
 
 // --- ІНТЕРФЕЙСИ ---\
 
 interface RevenueCatContextData {
     isRcReady: boolean;
-    offerings: PurchasesOfferings | null; 
+    offerings: PurchasesOfferings | null;
     customerInfo: CustomerInfo | null;
     isLoading: boolean;
-    handlePurchase: (pkg: PurchasesPackage) => Promise<boolean>; 
-    restorePurchases: () => Promise<boolean>; 
+    handlePurchase: (pkg: PurchasesPackage) => Promise<boolean>;
+    restorePurchases: () => Promise<boolean>;
+    // 🟢 ФІКС: Додаємо loadCustomerData до інтерфейсу
+    loadCustomerData: () => Promise<void>;
 }
 
 const RevenueCatContext = createContext<RevenueCatContextData | undefined>(undefined);
@@ -61,23 +63,26 @@ export interface RevenueCatProviderProps {
 }
 
 export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children }) => {
-    const { setUserPremiumStatus } = useTheme(); 
+    const { setUserPremiumStatus } = useTheme();
 
     const [isRcReady, setIsRcReady] = useState(false);
-    const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null); 
+    const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
     const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     // --- ЛОГІКА ПЕРЕВІРКИ ПРАВ ---\
 
     const checkEntitlements = useCallback((info: CustomerInfo): boolean => {
+        // Перевіряємо, чи є активне право з ID 'tracker_premium_access'
         const isPremium = info.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined;
-        setUserPremiumStatus(isPremium); 
-        return isPremium; 
+        // Оновлюємо статус в глобальному контексті теми/додатку
+        setUserPremiumStatus(isPremium);
+        return isPremium;
     }, [setUserPremiumStatus]);
 
     // --- ЗВАНТАЖЕННЯ ДАНИХ (Offerings & CustomerInfo) ---\
-    
+
+    // 🟢 loadCustomerData: Використовується для первинного завантаження та примусового оновлення
     const loadCustomerData = useCallback(async () => {
         console.log("[RevenueCat] Loading customer data...");
         setIsLoading(true);
@@ -85,26 +90,25 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
             // Отримуємо info
             const info = await Purchases.getCustomerInfo();
             setCustomerInfo(info);
-            checkEntitlements(info); 
-            
+            checkEntitlements(info);
+
             // Отримуємо offerings
             const offerings = await Purchases.getOfferings();
-            setOfferings(offerings); 
-            
+            setOfferings(offerings);
+
             setIsRcReady(true);
             console.log("[RevenueCat] SDK initialized and ready.");
         } catch (e) {
             const error = e as PurchasesError;
-            
-            // 🛑 ФІКС: Обробляємо очікувані помилки, щоб не показувати Red Box
+
+            // 🛑 Обробляємо очікувані помилки конфігурації (наприклад, при роботі в Expo Go без реального App ID)
             if (
-                error.code === PURCHASES_ERROR_CODE.CONFIGURATION_ERROR || 
-                error.code === PURCHASES_ERROR_CODE.PURCHASE_NOT_ALLOWED_ERROR 
+                error.code === PURCHASES_ERROR_CODE.CONFIGURATION_ERROR ||
+                error.code === PURCHASES_ERROR_CODE.PURCHASE_NOT_ALLOWED_ERROR
             ) {
-                // Використовуємо console.warn для логування, уникаючи червоного вікна
                 console.warn(`[RevenueCat] WARNING: Expected error during init: ${error.code}. Proceeding without offers.`);
-                setOfferings(null); 
-                setIsRcReady(true); 
+                setOfferings(null);
+                setIsRcReady(true);
             } else {
                 // Це реальна помилка (наприклад, мережева)
                 console.error("[RevenueCat] Initial load error (non-expected):", e);
@@ -118,27 +122,26 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
 
     // --- ЛОГІКА ПОКУПКИ ---\
 
-    const handlePurchase = useCallback(async (pkg: PurchasesPackage): Promise<boolean> => { 
+    const handlePurchase = useCallback(async (pkg: PurchasesPackage): Promise<boolean> => {
         setIsLoading(true);
         try {
             console.log(`[RevenueCat] Attempting to purchase: ${pkg.identifier}`);
             const { customerInfo } = await Purchases.purchasePackage(pkg);
-            
-            const isEntitled = checkEntitlements(customerInfo); 
+
+            const isEntitled = checkEntitlements(customerInfo);
 
             if (isEntitled) {
                 Alert.alert("Success!", "Thank you for purchasing Premium!");
             }
-            return isEntitled; 
+            return isEntitled;
         } catch (e) {
             const error = e as PurchasesError;
             if (error.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
                 console.log("[RevenueCat] Purchase cancelled by user.");
             } else {
-                // console.error("[RevenueCat] Purchase error:", e);
                 Alert.alert("Purchase Error", "Could not complete the purchase. Please try again later.");
             }
-            return false; 
+            return false;
         } finally {
             setIsLoading(false);
         }
@@ -146,23 +149,23 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
 
     // --- ЛОГІКА ВІДНОВЛЕННЯ ---\
 
-    const restorePurchases = useCallback(async (): Promise<boolean> => { 
+    const restorePurchases = useCallback(async (): Promise<boolean> => {
         setIsLoading(true);
         try {
             console.log("[RevenueCat] Restoring purchases...");
             const customerInfo = await Purchases.restorePurchases();
-            
+
             const isEntitled = checkEntitlements(customerInfo);
-            
+
             if (!isEntitled) {
                 Alert.alert("Information", "No active purchases found to restore.");
             }
-            
-            return isEntitled; 
+
+            return isEntitled;
         } catch (e) {
             console.error("[RevenueCat] Restore purchases error:", e);
             Alert.alert("Restore Error", "Failed to restore purchases.");
-            return false; 
+            return false;
         } finally {
             setIsLoading(false);
         }
@@ -171,23 +174,27 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
 
     // --- ІНІЦІАЛІЗАЦІЯ SDK ---
     useEffect(() => {
-        // 🛑 ФІКС: Зменшуємо рівень логування, щоб уникнути спаму попередженнями в консолі
-        Purchases.setLogLevel(LOG_LEVEL.ERROR); 
+        // Зменшуємо рівень логування, щоб уникнути спаму попередженнями в консолі
+        Purchases.setLogLevel(LOG_LEVEL.ERROR);
         Purchases.configure({ apiKey: REVENUECAT_API_KEY });
-        
+
+        // Слухач оновлень CustomerInfo (наприклад, після закінчення тріалу)
         const customerInfoListener = Purchases.addCustomerInfoUpdateListener((info) => {
             setCustomerInfo(info);
-            checkEntitlements(info); 
-        }) as unknown as (() => void); 
+            checkEntitlements(info);
+        }) as unknown as (() => void);
 
+        // Первинне завантаження
         loadCustomerData();
 
+        // Cleanup function
         return () => {
-            customerInfoListener(); 
+            customerInfoListener();
         };
     }, [loadCustomerData, checkEntitlements]);
 
 
+    // 🟢 ФІКС: Додаємо loadCustomerData до контексту
     const contextValue: RevenueCatContextData = {
         isRcReady,
         offerings,
@@ -195,6 +202,7 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
         isLoading,
         handlePurchase,
         restorePurchases,
+        loadCustomerData, // <-- ТУТ ВИПРАВЛЕННЯ
     };
 
     return (

@@ -1,33 +1,32 @@
-import { router } from 'expo-router';
-import React, { useMemo } from 'react';
+// index.tsx (HomeScreen)
+
+import { router, useFocusEffect } from 'expo-router';
+import React, { useMemo, useCallback } from 'react';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 // ВАЖЛИВО: Потрібно встановити 'react-native-svg': npx expo install react-native-svg
 import Svg, { Circle } from 'react-native-svg';
-import ThemedButton from '../../src/components/ThemedButton'; // FIX: Added 'src/' to the path
+import ThemedButton from '../../src/components/ThemedButton';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useTimerLogic } from '../../src/hooks/useTimerLogic';
+import { useRevenueCat } from '../../src/context/RevenueCatContext'; // 🟢 ТЕПЕР ПРАЦЮЄ: Імпорт useRevenueCat
 import { ROUTES } from '@/src/constants/Routes';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Foundation } from '@expo/vector-icons';
-import { BannerAd, BannerAdSize, TestIds, RewardedAd } from 'react-native-google-mobile-ads'; // <-- ДОДАНО
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import ResetDataButton from '@/src/components/ResetDataButton';
 
 const ADMOB_BANNER_ID = __DEV__
-    ? TestIds.BANNER // 1. Використовуємо тестовий ID в режимі розробки
-    : Platform.select({ // 2. Вибираємо ID для релізу
-        ios: 'ca-app-pub-6658861467026382~3148246399', // Реальний ID для iOS
-        android: 'ca-app-pub-6658861467026382~6565581373', // Реальний ID для Android
-        default: TestIds.BANNER, // Запасний варіант (хоча тут не потрібен, але для чистоти)
+    ? TestIds.BANNER
+    : Platform.select({
+        ios: 'ca-app-pub-6658861467026382~3148246399',
+        android: 'ca-app-pub-6658861467026382~6565581373',
+        default: TestIds.BANNER,
     });
 
-// NOTE: Components like ThemedButton are assumed to be defined elsewhere in the project
-// For a single-file environment, we must mock/define necessary components.
-
-
-// --- SVG PROGRESS BAR COMPONENT (НОВИЙ КОМПОНЕНТ) ---
+// --- SVG PROGRESS BAR COMPONENT (Без змін) ---
 
 interface CircularProgressBarProps {
-    progress: number; // 0.0 to 1.0 (заповнення)
+    progress: number;
     size: number;
     strokeWidth: number;
     progressColor: string;
@@ -43,17 +42,13 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
     backgroundColor,
     children
 }) => {
-    // 1. Обчислюємо розміри
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
-
-    // 2. Обчислюємо зміщення для відображення прогресу (0% -> повне зміщення, 100% -> 0 зміщення)
     const strokeDashoffset = circumference - (progress * circumference);
 
     return (
         <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
             <Svg height={size} width={size} style={{ transform: [{ rotateZ: '-90deg' }] }}>
-                {/* Background Ring (Статичне кільце) */}
                 <Circle
                     stroke={backgroundColor}
                     fill="transparent"
@@ -62,7 +57,6 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
                     r={radius}
                     strokeWidth={strokeWidth}
                 />
-                {/* Progress Ring (Кільце прогресу) */}
                 <Circle
                     stroke={progressColor}
                     fill="transparent"
@@ -72,10 +66,9 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
                     strokeWidth={strokeWidth}
                     strokeDasharray={circumference}
                     strokeDashoffset={strokeDashoffset}
-                    strokeLinecap="round" // Робить кінці лінії закругленими
+                    strokeLinecap="round"
                 />
             </Svg>
-            {/* Content (Текст/таймер) позиціонується абсолютно в центрі */}
             <View style={{
                 position: 'absolute',
                 width: size,
@@ -93,6 +86,19 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
 
 const HomeScreen = () => {
     const { colors, isUserPremium } = useTheme();
+
+    // 🟢 ВИПРАВЛЕННЯ 2: Отримання функції loadCustomerData
+    const { loadCustomerData } = useRevenueCat();
+
+    // 🟢 ВИПРАВЛЕННЯ 3: ЛОГІКА ПЕРЕВІРКИ ПІДПИСКИ ПРИ ФОКУСІ ЕКРАНА
+    useFocusEffect(
+        useCallback(() => {
+            console.log("[RevenueCat Fix] Forcing Customer Data reload on focus...");
+            // Цей виклик тепер коректно знаходить loadCustomerData в контексті
+            loadCustomerData();
+        }, [loadCustomerData])
+    );
+
     // Use the custom hook to access all timer state and actions
     const {
         setupData,
@@ -114,9 +120,7 @@ const HomeScreen = () => {
     // Calculate progress percentage for the ring/bar
     const progressPercent = useMemo(() => {
         if (intervalDuration <= 0) return 0;
-        // Progress is the time spent since the last smoke / total interval duration
         const timeSpent = intervalDuration - remainingSeconds;
-        // Ми обмежуємо прогрес 1.0, щоб не було переповнення (хоча remainingSeconds повинен бути >= 0)
         return Math.min(1, timeSpent / intervalDuration);
     }, [remainingSeconds, intervalDuration]);
 
@@ -179,7 +183,6 @@ const HomeScreen = () => {
 
     // 3. Main Timer View
     const targetTimeText = formatRemainingTime(intervalDuration);
-    // const [mainTime, subTime] = formattedTime.split(':'); // Не використовується, можна прибрати якщо не потрібно
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundPrimary }]}>
@@ -194,12 +197,11 @@ const HomeScreen = () => {
                     </Text>
 
                     {/* Timer Circle - NEW SVG IMPLEMENTATION */}
-                    {/* Використовуємо View для контролю зовнішніх відступів */}
                     <View style={{ marginVertical: 40 }}>
                         <CircularProgressBar
                             progress={progressPercent}
                             size={250}
-                            strokeWidth={15} // Збільшена товщина лінії
+                            strokeWidth={15}
                             progressColor={isTimeUp ? colors.accentSecondary : colors.accentPrimary}
                             backgroundColor={colors.separator}
                         >
@@ -221,36 +223,30 @@ const HomeScreen = () => {
                         </CircularProgressBar>
                     </View>
 
-                    {/* Info Text */}
+                    {/* Info Text and Main Button */}
                     {
                         targetCigarettesPerDay === 0 ? (
-                             <View style={styles.footer}>
-                             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                       You should be at your target for today. If not, you can start over.
-                    </Text>
-                            <ResetDataButton /></View>
+                            <View style={styles.footer}>
+                                <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                                    You should be at your target for today. If not, you can start over.
+                                </Text>
+                                <ResetDataButton /></View>
                         ) : (<><Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                        Your current target interval is {targetTimeText}.
-                    </Text>
-                    <Text style={[styles.infoText, { color: colors.textSecondary, marginBottom: 40 }]}>
-                        {isPaused ? 'Timer is paused during inactive hours.' : 'Keep waiting to hit your goal!'}
-                    </Text><View style={styles.footer}>
-                        <ThemedButton
-                            title="I Smoked (Record)"
-                            onPress={recordCigarette}
-                            disabled={isPaused} // Disable if outside active hours
-                            containerStyle={{ minWidth: '80%' }}
-                        />
-                    </View></>)
+                            Your current target interval is {targetTimeText}.
+                        </Text>
+                            <Text style={[styles.infoText, { color: colors.textSecondary, marginBottom: 40 }]}>
+                                {isPaused ? 'Timer is paused during inactive hours.' : 'Keep waiting to hit your goal!'}
+                            </Text><View style={styles.footer}>
+                                <ThemedButton
+                                    title="I Smoked (Record)"
+                                    onPress={recordCigarette}
+                                    disabled={isPaused}
+                                    containerStyle={{ minWidth: '80%' }}
+                                />
+                            </View></>)
                     }
 
-                    
-
-
-                    {/* Action Button */}
-                    
-
-                    {/* Footer Links/Actions */}
+                    {/* Secondary Actions (Stats and Premium) */}
                     <View style={styles.secondaryActions}>
                         <ThemedButton
                             title="See Stats"
@@ -262,7 +258,6 @@ const HomeScreen = () => {
                         {isUserPremium ? <ThemedButton
                             title="Premium activated"
                             disabled={true}
-                            // onPress={() => router.replace(ROUTES.SETTINGS_TAB)}
                             useSecondaryColor={true}
                             containerStyle={[styles.secondaryButton, { backgroundColor: "transparent", shadowColor: "transparent" }]}
                             icon={<Foundation name="crown" size={24} color={colors.textPrimary} />}
@@ -281,7 +276,7 @@ const HomeScreen = () => {
             <View style={styles.bannerContainer}>
                 {!isUserPremium ? <BannerAd
                     unitId={ADMOB_BANNER_ID}
-                    size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} // Рекомендований розмір для фіксованого банера
+                    size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
                     requestOptions={{
                         requestNonPersonalizedAdsOnly: true,
                     }}
@@ -310,17 +305,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-        // *** Тут ми додаємо відступ, щоб вміст не перекривався банером знизу ***
-        // Приблизна висота банера ANCHORED_ADAPTIVE_BANNER становить 50-90 одиниць. 
-        // Додамо запас.
         paddingBottom: 90,
     },
     bannerContainer: {
-        position: 'absolute', // Фіксуємо його
-        bottom: 0,           // Притискаємо до низу
-        width: '100%',       // Розтягуємо на всю ширину
-        alignItems: 'center', // Центруємо банер всередині View
-        // Додаємо відступи безпечної зони для iOS X/Android S, якщо SafeAreaView не справляється
+        position: 'absolute',
+        bottom: 0,
+        width: '100%',
+        alignItems: 'center',
         paddingBottom: Platform.OS === 'ios' ? 0 : 0,
     },
     contentContainer: {
@@ -329,9 +320,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 20,
     },
-    // timerCircle - СТАРИЙ СТИЛЬ ВИДАЛЕНО, його функціональність перенесена у CircularProgressBar
     timerValue: {
-        fontSize: 45, // Повернуто до більшого розміру
+        fontSize: 45,
         fontWeight: '800',
     },
     unitText: {
@@ -339,7 +329,6 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         marginTop: 5,
     },
-    // Text and Status
     statusText: {
         fontSize: 18,
         fontWeight: '600',
@@ -351,7 +340,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: 5,
     },
-    // Footer and Button
     footer: {
         width: '100%',
         alignItems: 'center',
