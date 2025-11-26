@@ -3,19 +3,18 @@ import Purchases, {
     LOG_LEVEL,
     PurchasesPackage,
     CustomerInfo, 
-    PurchasesOfferings, // 🟢 ВИПРАВЛЕНО: Коректний тип для Offerings
+    PurchasesOfferings, 
     PURCHASES_ERROR_CODE,
     PurchasesError 
 } from 'react-native-purchases';
 import { Platform, Alert } from 'react-native';
-
+import { LogBox } from 'react-native';
 import { useTheme } from '../hooks/useTheme'; 
 
 // --- КОНСТАНТИ ---\
 // ⚠️ ЗАМІНІТЬ ЦЕЙ КЛЮЧ НА ВАШ ПРОДАКШН-КЛЮЧ ПЕРЕД РЕЛІЗОМ
 const REVENUECAT_API_KEY = Platform.select({
-    // Тимчасово залишаємо Ваш ТЕСТОВИЙ ключ для iOS,
-    // оскільки у Вас ще немає appl_ production-ключа.
+    // Тимчасово залишаємо Ваш ТЕСТОВИЙ ключ для iOS
     ios: 'test_fsxTUrPVJaBBwQNyJMhQgafpwRt', 
     
     // 🟢 ВСТАВТЕ СЮДИ ВАШ РЕАЛЬНИЙ КЛЮЧ 'goog_' для продакшну на Android.
@@ -27,6 +26,11 @@ const REVENUECAT_API_KEY = Platform.select({
 // Ідентифікатор права, яке надає Premium-доступ
 const PRO_ENTITLEMENT_ID = 'tracker_premium_access';
 
+LogBox.ignoreLogs([
+  // Беремо унікальну частину тексту помилки
+  'Error fetching offerings - PurchasesError(code=ConfigurationError',
+]);
+
 // --- ІНТЕРФЕЙСИ ---\
 
 interface RevenueCatContextData {
@@ -34,8 +38,8 @@ interface RevenueCatContextData {
     offerings: PurchasesOfferings | null; 
     customerInfo: CustomerInfo | null;
     isLoading: boolean;
-    handlePurchase: (pkg: PurchasesPackage) => Promise<boolean>; // 🟢 ВИПРАВЛЕНО: Повертає Promise<boolean>
-    restorePurchases: () => Promise<boolean>; // 🟢 ВИПРАВЛЕНО: Повертає Promise<boolean>
+    handlePurchase: (pkg: PurchasesPackage) => Promise<boolean>; 
+    restorePurchases: () => Promise<boolean>; 
 }
 
 const RevenueCatContext = createContext<RevenueCatContextData | undefined>(undefined);
@@ -57,7 +61,6 @@ export interface RevenueCatProviderProps {
 }
 
 export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children }) => {
-    // setUserPremiumStatus беремо з ThemeContext
     const { setUserPremiumStatus } = useTheme(); 
 
     const [isRcReady, setIsRcReady] = useState(false);
@@ -69,7 +72,6 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
 
     const checkEntitlements = useCallback((info: CustomerInfo): boolean => {
         const isPremium = info.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined;
-        // Оновлюємо статус у ThemeContext
         setUserPremiumStatus(isPremium); 
         return isPremium; 
     }, [setUserPremiumStatus]);
@@ -92,8 +94,22 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
             setIsRcReady(true);
             console.log("[RevenueCat] SDK initialized and ready.");
         } catch (e) {
-            console.error("[RevenueCat] Initial load error:", e);
-            Alert.alert("Error", "Failed to load subscription data. Please check your connection.");
+            const error = e as PurchasesError;
+            
+            // 🛑 ФІКС: Обробляємо очікувані помилки, щоб не показувати Red Box
+            if (
+                error.code === PURCHASES_ERROR_CODE.CONFIGURATION_ERROR || 
+                error.code === PURCHASES_ERROR_CODE.PURCHASE_NOT_ALLOWED_ERROR 
+            ) {
+                // Використовуємо console.warn для логування, уникаючи червоного вікна
+                console.warn(`[RevenueCat] WARNING: Expected error during init: ${error.code}. Proceeding without offers.`);
+                setOfferings(null); 
+                setIsRcReady(true); 
+            } else {
+                // Це реальна помилка (наприклад, мережева)
+                console.error("[RevenueCat] Initial load error (non-expected):", e);
+                Alert.alert("Error", "Failed to load subscription data. Please check your connection.");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -138,7 +154,6 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
             
             const isEntitled = checkEntitlements(customerInfo);
             
-            // Якщо відновлення не знайшло активних прав
             if (!isEntitled) {
                 Alert.alert("Information", "No active purchases found to restore.");
             }
@@ -156,19 +171,18 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
 
     // --- ІНІЦІАЛІЗАЦІЯ SDK ---
     useEffect(() => {
-        Purchases.setLogLevel(LOG_LEVEL.DEBUG); 
+        // 🛑 ФІКС: Зменшуємо рівень логування, щоб уникнути спаму попередженнями в консолі
+        Purchases.setLogLevel(LOG_LEVEL.ERROR); 
         Purchases.configure({ apiKey: REVENUECAT_API_KEY });
         
-        // 🟢 ФІКС: Подвійне твердження типу для обходу помилки TypeScript/RevenueCat
         const customerInfoListener = Purchases.addCustomerInfoUpdateListener((info) => {
             setCustomerInfo(info);
             checkEntitlements(info); 
-        }) as unknown as (() => void); // Приведення типу до функції відписки
+        }) as unknown as (() => void); 
 
         loadCustomerData();
 
         return () => {
-            // Викликаємо функцію для відписки
             customerInfoListener(); 
         };
     }, [loadCustomerData, checkEntitlements]);

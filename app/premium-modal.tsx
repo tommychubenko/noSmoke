@@ -23,7 +23,6 @@ const CloseButton: React.FC = () => {
         <TouchableOpacity
             style={[
                 styles.closeButton,
-                // Встановлюємо динамічний відступ зверху
                 { top: Math.max(insets.top, 20) }
             ]}
             onPress={() => router.back()}
@@ -75,33 +74,22 @@ interface PriceBoxProps {
 const PriceBox: React.FC<PriceBoxProps> = ({ pkg, onPress, isLoading, colors }) => {
 
     const isAnnual = pkg.identifier.includes('annual');
-    const isWeekly = pkg.identifier.includes('weekly'); // 🟢 Нова перевірка
+    const isWeekly = pkg.identifier.includes('weekly'); 
 
     let title: string;
     let periodText: string;
 
-    // 🟢 ВИПРАВЛЕНА ЛОГІКА: Чітке визначення Weekly/Annual/Default
     if (isAnnual) {
         title = 'Annual Subscription';
         periodText = 'annual';
-        // Акцент на річному плані
-        const borderColor = colors.accentPrimary;
-        const backgroundColor = colors.backgroundSecondary;
     } else if (isWeekly) {
         title = 'Weekly Subscription';
         periodText = 'weekly';
-        // Нейтральний вигляд для тижневого плану
-        const borderColor = colors.separator;
-        const backgroundColor = colors.backgroundPrimary;
     } else {
-        // Запасний варіант
         title = 'Subscription';
         periodText = 'period';
-        const borderColor = colors.separator;
-        const backgroundColor = colors.backgroundPrimary;
     }
 
-    // Для стилів беремо параметри з isAnnual, як було задумано для акценту
     const borderColor = isAnnual ? colors.accentPrimary : colors.separator;
     const backgroundColor = isAnnual ? colors.backgroundSecondary : colors.backgroundPrimary;
     const priceColor = colors.textPrimary;
@@ -158,7 +146,7 @@ const PremiumContent: React.FC<PremiumContentProps> = ({ colors }) => (
                     key={index}
                     text={feature.text}
                     icon={feature.icon}
-                    isPremiumOwned={true} // Передаємо статус Premium
+                    isPremiumOwned={true} 
                 />
             ))}
         </View>
@@ -225,11 +213,8 @@ const NonPremiumContent: React.FC<NonPremiumContentProps> = ({
                     colors={colors}
                 />
             )}
-            {(!weeklyPackage && !annualPackage) && (
-                <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 20 }}>
-                    No offers are currently available.
-                </Text>
-            )}
+            {/* 🛑 Видаляємо цей блок, оскільки він ніколи не спрацює тут. 
+                 Логіка "No offers available" тепер обробляється у верхньому рівні компонента. */}
         </View>
     </>
 );
@@ -243,7 +228,7 @@ const PremiumModalScreen: React.FC = () => {
     const { colors, isUserPremium } = useTheme();
 
     const {
-        isRcReady,
+        isRcReady, // Тепер використовується для перевірки, чи завершена ініціалізація
         offerings,
         isLoading: isRcLoading,
         handlePurchase,
@@ -252,10 +237,10 @@ const PremiumModalScreen: React.FC = () => {
 
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-    const isReadyForPurchaseScreen = isRcReady && offerings && offerings.current;
-
-    // Стан завантаження (якщо дані ще не завантажені)
-    if (!isUserPremium && !isReadyForPurchaseScreen) {
+    // --- 1. ПЕРЕВІРКА НА АКТИВНЕ ЗАВАНТАЖЕННЯ ---
+    // 🟢 ФІКС: Якщо користувач не Premium І SDK ще не завершив ініціалізацію, 
+    // показуємо індикатор завантаження.
+    if (!isUserPremium && !isRcReady) {
         return (
             <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.backgroundPrimary }]}>
                 <CloseButton />
@@ -269,7 +254,28 @@ const PremiumModalScreen: React.FC = () => {
 
     const currentOffering = offerings?.current;
 
-    // 🟢 ЛОГІКА ПОШУКУ: Шукаємо weekly та annual пакети
+    // --- 2. ПЕРЕВІРКА НА ВІДСУТНІСТЬ ПРОПОЗИЦІЙ (Після завершення завантаження) ---
+    // 🟢 ФІКС: Якщо користувач не Premium, SDK готовий (isRcReady=true), АЛЕ currentOffering відсутній (null)
+    if (!isUserPremium && isRcReady && !currentOffering) {
+        return (
+            <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.backgroundPrimary }]}>
+                <CloseButton />
+                <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={50} color={DefaultColors.warning} />
+                    <Text style={{ color: colors.textPrimary, marginTop: 15, textAlign: 'center' }}>
+                         No subscription offers found.
+                    </Text>
+                     <Text style={{ color: colors.textSecondary, marginTop: 5, fontSize: 14, textAlign: 'center' }}>
+                         We are working on new subscriptions. Check back soon!
+                     </Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+    
+    // 3. ЗВИЧАЙНИЙ РЕНДЕРИНГ (АБО PREMIUM, АБО Є ПРОПОЗИЦІЇ)
+
+    // ЛОГІКА ПОШУКУ: Шукаємо weekly та annual пакети
     const weeklyPackage = currentOffering?.availablePackages.find(pkg => pkg.identifier.includes('weekly'));
     const annualPackage = currentOffering?.availablePackages.find(pkg => pkg.identifier.includes('annual'));
 
@@ -294,21 +300,6 @@ const PremiumModalScreen: React.FC = () => {
             setMessage({ text: "We couldn't find any active purchases.", type: 'error' });
         }
     }, [restorePurchases]);
-
-    // Стан помилки (якщо дані завантажено, але пропозицій немає)
-    if (!isUserPremium && !currentOffering) {
-        return (
-            <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.backgroundPrimary }]}>
-                <CloseButton />
-                <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                    <MaterialCommunityIcons name="alert-circle-outline" size={50} color={DefaultColors.error} />
-                    <Text style={{ color: colors.textPrimary, marginTop: 15, textAlign: 'center' }}>
-                        No subscription offers found. Please try again later.
-                    </Text>
-                </View>
-            </SafeAreaView>
-        );
-    }
 
 
     return (
@@ -376,6 +367,7 @@ export default PremiumModalScreen;
 
 // =================================================================
 // --- СТИЛІ ---
+// (стилі залишилися без змін)
 // =================================================================
 
 const styles = StyleSheet.create({
@@ -481,7 +473,7 @@ const styles = StyleSheet.create({
     // Message Bar
     messageBar: {
         position: 'absolute',
-        top: 50, // Залишаємо фіксований відступ для повідомлень
+        top: 50, 
         left: 10,
         right: 10,
         padding: 15,
