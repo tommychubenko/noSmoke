@@ -225,7 +225,7 @@ const NonPremiumContent: React.FC<NonPremiumContentProps> = ({
 // =================================================================
 
 const PremiumModalScreen: React.FC = () => {
-    const { colors, isUserPremium } = useTheme();
+    const { colors, isUserPremium, setUserPremiumStatus } = useTheme();
 
     const {
         isRcReady, // Тепер використовується для перевірки, чи завершена ініціалізація
@@ -283,12 +283,17 @@ const PremiumModalScreen: React.FC = () => {
     const onPurchase = useCallback(async (pkg: PurchasesPackage) => {
         const success = await handlePurchase(pkg);
         if (success) {
+            // 🟢 ФІКС 2А: Встановлюємо статус Premium у глобальному стані ThemeContext
+            await setUserPremiumStatus(true); 
+            
             setMessage({ text: "Purchase successful! Thank you for your support.", type: 'success' });
+            // Оскільки setUserPremiumStatus автоматично оновлює isUserPremium,
+            // модалка перерендериться, показуючи PremiumContent, а потім закриється.
             setTimeout(() => router.back(), 2000);
         } else {
             setMessage({ text: "Purchase failed or cancelled.", type: 'error' });
         }
-    }, [handlePurchase]);
+    }, [handlePurchase, setUserPremiumStatus]); // 🟢 ФІКС 2Б: Оновлюємо залежності
 
     // Логіка для відновлення покупок
     const onRestore = useCallback(async () => {

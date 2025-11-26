@@ -21,7 +21,7 @@ interface UseThemeResult {
   /** True if the user has an active Premium subscription. (ДОДАНО) */
   isUserPremium: boolean;
   /** Function to manually set the Premium status. (ДОДАНО) */
-  setUserPremiumStatus: (isPremium: boolean) => Promise<void>;
+  setUserPremiumStatus: (isPremium: boolean) => void;
 }
 
 // --- HOOK IMPLEMENTATION ---
