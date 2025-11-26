@@ -2,10 +2,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState, useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
-// 🟢 ІМПОРТ: Додано useSafeAreaInsets
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// 🟢 ІМПОРТИ ДЛЯ ФУНКЦІОНАЛУ
+// ІМПОРТИ ДЛЯ ФУНКЦІОНАЛУ
 import ThemedButton from '../src/components/ThemedButton';
 import { useTheme } from '../src/hooks/useTheme';
 import { useRevenueCat, PurchasesPackage } from '../src/context/RevenueCatContext';
@@ -18,15 +17,13 @@ import { DefaultColors } from '@/src/constants/Colors';
 /** Кнопка закриття модального вікна */
 const CloseButton: React.FC = () => {
     const { colors } = useTheme();
-    // 🟢 ВИКОРИСТАННЯ: Отримуємо верхній відступ безпечної зони
     const insets = useSafeAreaInsets();
 
     return (
-        // 🟢 ВИПРАВЛЕННЯ СТИЛЮ: Встановлюємо динамічний відступ зверху
         <TouchableOpacity
             style={[
                 styles.closeButton,
-                // Якщо є відступ (наприклад, на iOS), використовуємо його; інакше – стандартний відступ.
+                // Встановлюємо динамічний відступ зверху
                 { top: Math.max(insets.top, 20) }
             ]}
             onPress={() => router.back()}
@@ -78,13 +75,37 @@ interface PriceBoxProps {
 const PriceBox: React.FC<PriceBoxProps> = ({ pkg, onPress, isLoading, colors }) => {
 
     const isAnnual = pkg.identifier.includes('annual');
+    const isWeekly = pkg.identifier.includes('weekly'); // 🟢 Нова перевірка
 
-    const title = isAnnual ? 'Annual Subscription' : 'Monthly Subscription';
-    const periodText = isAnnual ? 'annual' : 'monthly';
+    let title: string;
+    let periodText: string;
 
+    // 🟢 ВИПРАВЛЕНА ЛОГІКА: Чітке визначення Weekly/Annual/Default
+    if (isAnnual) {
+        title = 'Annual Subscription';
+        periodText = 'annual';
+        // Акцент на річному плані
+        const borderColor = colors.accentPrimary;
+        const backgroundColor = colors.backgroundSecondary;
+    } else if (isWeekly) {
+        title = 'Weekly Subscription';
+        periodText = 'weekly';
+        // Нейтральний вигляд для тижневого плану
+        const borderColor = colors.separator;
+        const backgroundColor = colors.backgroundPrimary;
+    } else {
+        // Запасний варіант
+        title = 'Subscription';
+        periodText = 'period';
+        const borderColor = colors.separator;
+        const backgroundColor = colors.backgroundPrimary;
+    }
+
+    // Для стилів беремо параметри з isAnnual, як було задумано для акценту
     const borderColor = isAnnual ? colors.accentPrimary : colors.separator;
     const backgroundColor = isAnnual ? colors.backgroundSecondary : colors.backgroundPrimary;
     const priceColor = colors.textPrimary;
+
 
     return (
         <TouchableOpacity
@@ -154,7 +175,7 @@ const PremiumContent: React.FC<PremiumContentProps> = ({ colors }) => (
 // --- ВМІСТ ДЛЯ NON-PREMIUM КОРИСТУВАЧІВ ---
 // =================================================================
 interface NonPremiumContentProps extends PremiumContentProps {
-    monthlyPackage: PurchasesPackage | undefined;
+    weeklyPackage: PurchasesPackage | undefined;
     annualPackage: PurchasesPackage | undefined;
     onPurchase: (pkg: PurchasesPackage) => void;
     isRcLoading: boolean;
@@ -162,7 +183,7 @@ interface NonPremiumContentProps extends PremiumContentProps {
 
 const NonPremiumContent: React.FC<NonPremiumContentProps> = ({
     colors,
-    monthlyPackage,
+    weeklyPackage,
     annualPackage,
     onPurchase,
     isRcLoading
@@ -188,9 +209,9 @@ const NonPremiumContent: React.FC<NonPremiumContentProps> = ({
 
         {/* Вибір ціни */}
         <View style={styles.priceContainer}>
-            {monthlyPackage && (
+            {weeklyPackage && (
                 <PriceBox
-                    pkg={monthlyPackage}
+                    pkg={weeklyPackage}
                     onPress={onPurchase}
                     isLoading={isRcLoading}
                     colors={colors}
@@ -204,7 +225,7 @@ const NonPremiumContent: React.FC<NonPremiumContentProps> = ({
                     colors={colors}
                 />
             )}
-            {(!monthlyPackage && !annualPackage) && (
+            {(!weeklyPackage && !annualPackage) && (
                 <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 20 }}>
                     No offers are currently available.
                 </Text>
@@ -233,13 +254,14 @@ const PremiumModalScreen: React.FC = () => {
 
     const isReadyForPurchaseScreen = isRcReady && offerings && offerings.current;
 
+    // Стан завантаження (якщо дані ще не завантажені)
     if (!isUserPremium && !isReadyForPurchaseScreen) {
         return (
             <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.backgroundPrimary }]}>
                 <CloseButton />
                 <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
                     <ActivityIndicator size="large" color={colors.accentPrimary} />
-                    <Text style={{ color: colors.textSecondary, marginTop: 15 }}>Завантаження підписок...</Text>
+                    <Text style={{ color: colors.textSecondary, marginTop: 15 }}>Loading subscriptions...</Text>
                 </View>
             </SafeAreaView>
         );
@@ -247,7 +269,8 @@ const PremiumModalScreen: React.FC = () => {
 
     const currentOffering = offerings?.current;
 
-    const monthlyPackage = currentOffering?.availablePackages.find(pkg => pkg.identifier.includes('monthly'));
+    // 🟢 ЛОГІКА ПОШУКУ: Шукаємо weekly та annual пакети
+    const weeklyPackage = currentOffering?.availablePackages.find(pkg => pkg.identifier.includes('weekly'));
     const annualPackage = currentOffering?.availablePackages.find(pkg => pkg.identifier.includes('annual'));
 
     // Логіка для обробки покупки
@@ -272,6 +295,7 @@ const PremiumModalScreen: React.FC = () => {
         }
     }, [restorePurchases]);
 
+    // Стан помилки (якщо дані завантажено, але пропозицій немає)
     if (!isUserPremium && !currentOffering) {
         return (
             <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.backgroundPrimary }]}>
@@ -318,7 +342,7 @@ const PremiumModalScreen: React.FC = () => {
                 ) : (
                     <NonPremiumContent
                         colors={colors}
-                        monthlyPackage={monthlyPackage}
+                        weeklyPackage={weeklyPackage}
                         annualPackage={annualPackage}
                         onPurchase={onPurchase}
                         isRcLoading={isRcLoading}
@@ -360,14 +384,11 @@ const styles = StyleSheet.create({
     },
     container: {
         paddingHorizontal: 20,
-        // 🟢 ВИПРАВЛЕНО: Збільшуємо верхній відступ, щоб контент не заїжджав під CloseButton
         paddingTop: 80,
         paddingBottom: 150,
     },
     closeButton: {
         position: 'absolute',
-        // 🟢 ВИПРАВЛЕНО: Видалено Platform.OS перевірку, оскільки тепер використовується useSafeAreaInsets у компоненті.
-        // Це забезпечує коректне позиціонування кнопки, незалежно від вирізів екрана.
         right: 20,
         zIndex: 10,
         padding: 5,

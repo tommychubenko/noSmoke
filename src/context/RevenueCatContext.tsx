@@ -13,7 +13,17 @@ import { useTheme } from '../hooks/useTheme';
 
 // --- КОНСТАНТИ ---\
 // ⚠️ ЗАМІНІТЬ ЦЕЙ КЛЮЧ НА ВАШ ПРОДАКШН-КЛЮЧ ПЕРЕД РЕЛІЗОМ
-const REVENUECAT_API_KEY = 'test_fsxTUrPVJaBBwQNyJMhQgafpwRt'; 
+const REVENUECAT_API_KEY = Platform.select({
+    // Тимчасово залишаємо Ваш ТЕСТОВИЙ ключ для iOS,
+    // оскільки у Вас ще немає appl_ production-ключа.
+    ios: 'test_fsxTUrPVJaBBwQNyJMhQgafpwRt', 
+    
+    // 🟢 ВСТАВТЕ СЮДИ ВАШ РЕАЛЬНИЙ КЛЮЧ 'goog_' для продакшну на Android.
+    android: 'goog_AbOlDjaKPZACwHsMRryqWdpAQiI', 
+    
+    // Якщо не визначено (наприклад, web), використовуємо Android-ключ
+    default: 'goog_AbOlDjaKPZACwHsMRryqWdpAQiI', 
+});
 // Ідентифікатор права, яке надає Premium-доступ
 const PRO_ENTITLEMENT_ID = 'tracker_premium_access';
 
@@ -83,7 +93,7 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
             console.log("[RevenueCat] SDK initialized and ready.");
         } catch (e) {
             console.error("[RevenueCat] Initial load error:", e);
-            Alert.alert("Помилка", "Не вдалося завантажити дані підписок. Перевірте підключення.");
+            Alert.alert("Error", "Failed to load subscription data. Please check your connection.");
         } finally {
             setIsLoading(false);
         }
@@ -101,7 +111,7 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
             const isEntitled = checkEntitlements(customerInfo); 
 
             if (isEntitled) {
-                Alert.alert("Успіх!", "Дякуємо за придбання Premium!");
+                Alert.alert("Success!", "Thank you for purchasing Premium!");
             }
             return isEntitled; 
         } catch (e) {
@@ -110,7 +120,7 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
                 console.log("[RevenueCat] Purchase cancelled by user.");
             } else {
                 // console.error("[RevenueCat] Purchase error:", e);
-                Alert.alert("Помилка покупки", "Не вдалося завершити покупку. Спробуйте пізніше.");
+                Alert.alert("Purchase Error", "Could not complete the purchase. Please try again later.");
             }
             return false; 
         } finally {
@@ -130,13 +140,13 @@ export const RevenueCatProvider: React.FC<RevenueCatProviderProps> = ({ children
             
             // Якщо відновлення не знайшло активних прав
             if (!isEntitled) {
-                Alert.alert("Інформація", "Не знайдено активних покупок для відновлення.");
+                Alert.alert("Information", "No active purchases found to restore.");
             }
             
             return isEntitled; 
         } catch (e) {
             console.error("[RevenueCat] Restore purchases error:", e);
-            Alert.alert("Помилка відновлення", "Не вдалося відновити покупки.");
+            Alert.alert("Restore Error", "Failed to restore purchases.");
             return false; 
         } finally {
             setIsLoading(false);
