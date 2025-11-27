@@ -16,15 +16,13 @@
     "production": {
       "autoIncrement": true,
       "channel": "production"
-      // Помилкове налаштування "android" видалено звідси
+      // Налаштування, пов'язані з файлами деобфускації, тепер керуються автоматично EAS CLI
     }
   },
   "submit": {
     "production": {
-      // ПРАВИЛЬНЕ РОЗМІЩЕННЯ: "autoUpload" переміщено в секцію "submit"
-      "android": {
-        "autoUpload": true
-      }
+      // Видалено невалідне налаштування "android.autoUpload".
+      // EAS CLI автоматично завантажить файли деобфускації під час процесу submit.
     }
   }
 }
