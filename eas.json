@@ -15,14 +15,16 @@
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production",
-      // Додано налаштування Android для автоматичного завантаження файлів деобфускації
+      "channel": "production"
+      // Помилкове налаштування "android" видалено звідси
+    }
+  },
+  "submit": {
+    "production": {
+      // ПРАВИЛЬНЕ РОЗМІЩЕННЯ: "autoUpload" переміщено в секцію "submit"
       "android": {
         "autoUpload": true
       }
     }
-  },
-  "submit": {
-    "production": {}
   }
 }
