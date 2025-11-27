@@ -1,19 +1,18 @@
-// index.tsx (HomeScreen)
-
 import { router, useFocusEffect } from 'expo-router';
-import React, { useMemo, useCallback } from 'react';
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View, TouchableOpacity, Pressable } from 'react-native';
 // ВАЖЛИВО: Потрібно встановити 'react-native-svg': npx expo install react-native-svg
 import Svg, { Circle } from 'react-native-svg';
 import ThemedButton from '../../src/components/ThemedButton';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useTimerLogic } from '../../src/hooks/useTimerLogic';
-import { useRevenueCat } from '../../src/context/RevenueCatContext'; // 🟢 ТЕПЕР ПРАЦЮЄ: Імпорт useRevenueCat
+import { useRevenueCat } from '../../src/context/RevenueCatContext';
 import { ROUTES } from '@/src/constants/Routes';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Foundation } from '@expo/vector-icons';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import ResetDataButton from '@/src/components/ResetDataButton';
+
 
 const ADMOB_BANNER_ID = __DEV__
     ? TestIds.BANNER
@@ -85,18 +84,80 @@ const CircularProgressBar: React.FC<CircularProgressBarProps> = ({
 
 
 const HomeScreen = () => {
-    const { colors, isUserPremium } = useTheme();
+    // isUserPremium is read-only here, setUserPremiumStatus is the setter function
+    const { colors, isUserPremium, setUserPremiumStatus } = useTheme();
 
-    // 🟢 ВИПРАВЛЕННЯ 2: Отримання функції loadCustomerData
+    // 🎁 Стан для відстеження кліків таємного перемикача (Easter Egg)
+    const [forcePremiumClicks, setForcePremiumClicks] = useState(0);
+
+    // 🟢 Отримання функції loadCustomerData
     const { loadCustomerData } = useRevenueCat();
 
-    // 🟢 ВИПРАВЛЕННЯ 3: ЛОГІКА ПЕРЕВІРКИ ПІДПИСКИ ПРИ ФОКУСІ ЕКРАНА
-    useFocusEffect(
+    // 🎁 Обробник таємного натискання (Easter Egg): Toggles Premium Status for local testing
+    const handleSecretPress = useCallback(() => {
+        const newCount = forcePremiumClicks + 1;
+        setForcePremiumClicks(newCount);
+        console.log(`[Easter Egg] Clicks: ${newCount}`);
+
+        if (newCount === 5) {
+            // Click 5: Force Premium ON
+            console.log('[Easter Egg] Activating forced premium state (5 clicks)');
+            // Примусово вмикаємо преміум-доступ
+            setUserPremiumStatus(true);
+        } else if (newCount === 6) {
+            // Click 6: Force Premium OFF
+            console.log('[Easter Egg] Deactivating forced premium state (6 clicks)');
+            // Примусово вимикаємо преміум
+            setUserPremiumStatus(false);
+            setForcePremiumClicks(0)
+            // Наступний useFocusEffect завантажить реальний стан
+        }
+    }, [forcePremiumClicks, setUserPremiumStatus]);
+
+
+    // 🟢 ОНОВЛЕНА ЛОГІКА ПЕРЕВІРКИ ПІДПИСКИ ПРИ ФОКУСІ ЕКРАНА
+ useFocusEffect(
         useCallback(() => {
-            console.log("[RevenueCat Fix] Forcing Customer Data reload on focus...");
-            // Цей виклик тепер коректно знаходить loadCustomerData в контексті
-            loadCustomerData();
-        }, [loadCustomerData])
+            const checkPremiumStatus = async () => {
+                console.log('[RevenueCat] Checking premium status on focus...');
+                
+                try {
+                    const customerInfo = await loadCustomerData(); 
+
+                    if (customerInfo && forcePremiumClicks !==5 ) {
+                        const PRO_ENTITLEMENT_ID = 'tracker_premium_access'; 
+                        // Визначаємо актуальний статус з API
+                        const isActive = customerInfo.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined;
+                        const statusText = isActive ? 'PREMIUM' : 'STANDARD';
+                        
+                        // 🎯 ПОКРАЩЕННЯ: Порівнюємо isActive з поточним станом isUserPremium
+                        if (isActive !== isUserPremium) {
+                            console.log(`[RevenueCat] Status change detected: ${isUserPremium} -> ${isActive}. Updating state...`);
+                            // Встановлюємо новий статус
+                            setUserPremiumStatus(isActive);
+                        } else {
+                             console.log(`[RevenueCat] Status unchanged: ${isUserPremium}. No state update.`);
+                        }
+
+                        console.log(`[RevenueCat] Current Entitlement Status (from API): ${statusText}`);
+                    } else {
+                        console.log('[RevenueCat] Focus check: Data load returned null (error/no data).');
+                        // Опціонально: Можна встановити false, якщо loadCustomerData не вдалося, 
+                        // щоб гарантувати, що статус не залишається застарілим
+                        // if (isUserPremium) {
+                        //     setUserPremiumStatus(false); 
+                        // }
+                    }
+
+                } catch (error) {
+                    console.error('[RevenueCat Error] Failed to execute loadCustomerData:', error);
+                }
+            };
+
+            checkPremiumStatus();
+            
+            return () => {}; 
+        }, [loadCustomerData, setUserPremiumStatus, isUserPremium, forcePremiumClicks])
     );
 
     // Use the custom hook to access all timer state and actions
@@ -196,7 +257,7 @@ const HomeScreen = () => {
                         {statusMessage}
                     </Text>
 
-                    {/* Timer Circle - NEW SVG IMPLEMENTATION */}
+                    {/* Timer Circle - SVG IMPLEMENTATION */}
                     <View style={{ marginVertical: 40 }}>
                         <CircularProgressBar
                             progress={progressPercent}
@@ -230,13 +291,48 @@ const HomeScreen = () => {
                                 <Text style={[styles.infoText, { color: colors.textSecondary }]}>
                                     You should be at your target for today. If not, you can start over.
                                 </Text>
-                                <ResetDataButton /></View>
-                        ) : (<><Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                            Your current target interval is {targetTimeText}.
-                        </Text>
-                            <Text style={[styles.infoText, { color: colors.textSecondary, marginBottom: 40 }]}>
+                                <ResetDataButton />
+                            </View>
+                        ) : (<>
+                            {/* 🐞 ВИПРАВЛЕНО: Використовуємо View з flexDirection: 'row' для коректного вбудовування Pressable */}
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', maxWidth: '100%' }}>
+                                <Text style={[styles.infoText, { color: colors.textSecondary, marginBottom: 0 }]}>
+                                    Your current target{' '}
+                                </Text>
+                                
+                                {/* Інтерактивна частина з Pressable */}
+                                <Pressable
+                                    onPress={handleSecretPress}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    style={{ paddingHorizontal: 2 }} // Додаємо невеликий padding, щоб Pressable був помітнішим
+                                    // 🔇 ВИПРАВЛЕНО ЗВУК: Вимикаємо звук та ефект "хвилі" для прихованої кнопки
+                                    android_disableSound={true} 
+                                    android_ripple={{ color: 'transparent' }}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.infoText,
+                                            {
+                                                color: colors.textSecondary,
+                                                textDecorationLine: forcePremiumClicks === 5 ? 'underline' : 'none',
+                                                // Видалено margin/padding hacks, оскільки Pressable є блочним елементом у View
+                                                marginBottom: 0, 
+                                            }
+                                        ]}
+                                    >
+                                        interval
+                                    </Text>
+                                </Pressable>
+                                
+                                <Text style={[styles.infoText, { color: colors.textSecondary, marginBottom: 0 }]}>
+                                    {' '}is {targetTimeText}.
+                                </Text>
+                            </View>
+
+                            <Text style={[styles.infoText, { color: colors.textSecondary, marginTop: 10, marginBottom: 40 }]}>
                                 {isPaused ? 'Timer is paused during inactive hours.' : 'Keep waiting to hit your goal!'}
-                            </Text><View style={styles.footer}>
+                            </Text>
+                            <View style={styles.footer}>
                                 <ThemedButton
                                     title="I Smoked (Record)"
                                     onPress={recordCigarette}
@@ -260,8 +356,9 @@ const HomeScreen = () => {
                             disabled={true}
                             useSecondaryColor={true}
                             containerStyle={[styles.secondaryButton, { backgroundColor: "transparent", shadowColor: "transparent" }]}
-                            icon={<Foundation name="crown" size={24} color={colors.textPrimary} />}
-                            textStyle={{ fontSize: 14 }}
+                            // 🎨 Оновлено колір іконки та тексту на colors.accentPrimary для кращого візуального підтвердження
+                            icon={<Foundation name="crown" size={24} color={colors.accentPrimary} />}
+                            textStyle={{ fontSize: 14, color: colors.accentPrimary }}
                         /> : <ThemedButton
                             title="Get Premium"
                             onPress={() => router.push(ROUTES.PREMIUM_MODAL)}
@@ -274,6 +371,7 @@ const HomeScreen = () => {
                 </View>
             </ScrollView>
             <View style={styles.bannerContainer}>
+                {/* Ad Banner: visible only if the user is NOT premium */}
                 {!isUserPremium ? <BannerAd
                     unitId={ADMOB_BANNER_ID}
                     size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
@@ -338,7 +436,8 @@ const styles = StyleSheet.create({
     infoText: {
         fontSize: 14,
         textAlign: 'center',
-        marginTop: 5,
+        // Встановлюємо marginBottom в 0, оскільки ми керуємо цим за допомогою зовнішніх View
+        marginBottom: 0, 
     },
     footer: {
         width: '100%',

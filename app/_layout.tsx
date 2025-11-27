@@ -48,7 +48,7 @@ const LoadingScreen: React.FC = () => {
   return (
     <View style={[styles.loadingContainer, { backgroundColor: colors.backgroundPrimary }]}>
       <ActivityIndicator size="large" color={colors.accentPrimary} />
-      <Text style={[styles.loadingText, { color: colors.textSecondary, marginTop: 10 }]}>Завантаження...</Text>
+      <Text style={[styles.loadingText, { color: colors.textSecondary, marginTop: 10 }]}>Loading...</Text>
     </View>
   );
 };

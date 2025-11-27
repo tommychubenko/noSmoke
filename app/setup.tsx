@@ -44,7 +44,7 @@ const SetupScreen = () => {
   // --- 1. СТАН ДАНИХ ДЛЯ ФОРМИ ---
   const [activeStartTime, setActiveStartTime] = useState('08:00');
   const [activeEndTime, setActiveEndTime] = useState('23:00');
-  const [cigarettesPerDay, setCigarettesPerDay] = useState(20);
+  const [cigarettesPerDay, setCigarettesPerDay] = useState(999);
   const [planType, setPlanType] = useState<'slow' | 'balanced' | 'aggressive'>('balanced');
   
   // ✅ ДОДАНО СТАНОВІ ЗМІННІ ДЛЯ ФІНАНСІВ:

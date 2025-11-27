@@ -300,6 +300,7 @@ const PremiumModalScreen: React.FC = () => {
         const success = await restorePurchases();
         if (success) {
             setMessage({ text: "Purchases Restored!", type: 'success' });
+            setUserPremiumStatus(true);
             setTimeout(() => router.back(), 2000);
         } else {
             setMessage({ text: "We couldn't find any active purchases.", type: 'error' });
